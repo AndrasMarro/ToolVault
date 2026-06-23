@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="QR-Code Decoder & Analyzer — dekodiere QR-Codes aus Bildern oder mit der Kamera und sieh alle technischen Details." />
+  <title>QR Decoder · QR-Codes analysieren und dekodieren</title>
+
+  <script>
+    // Set theme before render to prevent flash. Dark is default.
+    (function () {
+      try {
+        const saved = localStorage.getItem('qr-decoder-theme');
+        if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch (_) {}
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+  <style>
+    :root {
+      /* Dark mode = default */
+      --bg: #0D0D0C;
+      --bg-elev: #161614;
+      --bg-soft: #1F1F1C;
+      --ink: #F5F5F0;
+      --ink-soft: #B8B8B0;
+      --ink-mute: #76766F;
+      --line: rgba(245, 245, 240, 0.08);
+      --line-strong: rgba(245, 245, 240, 0.16);
+      --accent: #6F84FF;
+      --accent-soft: rgba(111, 132, 255, 0.14);
+      --success: #34D399;
+      --success-soft: rgba(52, 211, 153, 0.12);
+      --warn: #FBBF24;
+      --warn-soft: rgba(251, 191, 36, 0.12);
+      --danger: #F87171;
+      --danger-soft: rgba(248, 113, 113, 0.12);
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+      --font-display: 'Space Grotesk', 'Inter', sans-serif;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #FAFAF7;
+      --bg-elev: #FFFFFF;
+      --bg-soft: #F2F2EC;
+      --ink: #0A0A0A;
+      --ink-soft: #4A4A48;
+      --ink-mute: #8A8A86;
+      --line: rgba(10, 10, 10, 0.08);
+      --line-strong: rgba(10, 10, 10, 0.16);
+      --accent: #2D4BFF;
+      --accent-soft: #E8ECFF;
+      --success: #0E8A4F;
+      --success-soft: #E1F4EA;
+      --warn: #B45309;
+      --warn-soft: #FEF3D6;
+      --danger: #B91C1C;
+      --danger-soft: #FEE2E2;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 40px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+      transition: opacity 0.15s ease;
+    }
+
+    a.brand:hover .brand-title .arrow {
+      transform: translate(2px, -2px);
+      color: var(--accent);
+    }
+
+    a.brand:hover .brand-mark span:not(.off) {
+      background: var(--accent);
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 1px;
+      flex-shrink: 0;
+    }
+
+    .brand-mark span {
+      background: var(--ink);
+      border-radius: 1px;
+      transition: background 0.15s ease;
+    }
+
+    .brand-mark span.off {
+      background: transparent;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .brand-title .arrow {
+      font-size: 14px;
+      color: var(--ink-mute);
+      transition: all 0.15s ease;
+      display: inline-block;
+    }
+
+    .brand-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-mute);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-top: 4px;
+    }
+
+    .brand-right { text-align: right; }
+    .brand-right .brand-title { justify-content: flex-end; }
+
+    .theme-toggle {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg-elev);
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink);
+      transition: all 0.15s ease;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--ink);
+      color: var(--accent);
+    }
+
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .theme-toggle .icon-sun { display: none; }
+    .theme-toggle .icon-moon { display: block; }
+    :root[data-theme="light"] .theme-toggle .icon-sun { display: block; }
+    :root[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+    @media (max-width: 640px) {
+      .brand-subtitle { display: none; }
+      .header { gap: 8px; }
+      .header-right { gap: 10px; }
+      .brand-mark { width: 28px; height: 28px; }
+      .brand-title { font-size: 17px; }
+    }
+
+    /* Hero */
+    .hero {
+      margin-bottom: 40px;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 6vw, 54px);
+      font-weight: 600;
+      letter-spacing: -0.035em;
+      line-height: 1.05;
+      margin: 0 0 16px;
+    }
+
+    .hero h1 .accent {
+      color: var(--accent);
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: var(--ink-soft);
+      max-width: 560px;
+      margin: 0;
+    }
+
+    /* Drop zone */
+    .input-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 600px) {
+      .input-section { grid-template-columns: 1fr; }
+    }
+
+    .drop-zone {
+      position: relative;
+      background: var(--bg-elev);
+      border: 1.5px dashed var(--line-strong);
+      border-radius: var(--radius-lg);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .drop-zone:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      border-style: solid;
+      background: var(--accent-soft);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .drop-icon {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 10px;
+      color: var(--ink-soft);
+    }
+
+    .drop-label {
+      font-weight: 500;
+      font-size: 15px;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .drop-hint {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-mute);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Camera */
+    .camera-section {
+      display: none;
+      margin-bottom: 28px;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .camera-section.active { display: block; }
+
+    .camera-section video {
+      width: 100%;
+      display: block;
+      max-height: 480px;
+      object-fit: cover;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scan-frame {
+      width: 60%;
+      max-width: 280px;
+      aspect-ratio: 1;
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius);
+      position: relative;
+    }
+
+    .scan-frame::before,
+    .scan-frame::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--accent);
+    }
+
+    .scan-frame::before {
+      top: -2px;
+      left: -2px;
+      border-right: 0;
+      border-bottom: 0;
+      border-top-left-radius: var(--radius);
+    }
+
+    .scan-frame::after {
+      bottom: -2px;
+      right: -2px;
+      border-left: 0;
+      border-top: 0;
+      border-bottom-right-radius: var(--radius);
+    }
+
+    .camera-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      border: 0;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--ink-mute);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+    }
+
+    /* Result */
+    .result {
+      display: none;
+    }
+
+    .result.visible { display: block; }
+
+    .result-preview {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      margin-bottom: 16px;
+    }
+
+    .preview-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      background: var(--bg-soft);
+      flex-shrink: 0;
+    }
+
+    .preview-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .preview-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--success);
+      background: var(--success-soft);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
+    .preview-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+    }
+
+    .preview-filename {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-soft);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      background: var(--bg-soft);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .tab:hover { color: var(--ink); }
+
+    .tab.active {
+      background: var(--bg-elev);
+      color: var(--ink);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    /* Views */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Basic view cards */
+    .data-card {
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 12px;
+    }
+
+    .field-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-mute);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .field-value {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      color: var(--ink);
+      word-break: break-all;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .field-value.is-url {
+      color: var(--accent);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg-elev);
+      color: var(--ink);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--ink);
+      background: var(--bg-soft);
+    }
+
+    .btn.primary {
+      background: var(--ink);
+      color: var(--bg);
+      border-color: var(--ink);
+    }
+
+    .btn.primary:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn-icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      background: var(--bg-soft);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--ink-mute);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    /* Advanced view */
+    .advanced-section {
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-soft);
+    }
+
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--ink-soft);
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .section-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .data-table tr {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .data-table tr:last-child { border-bottom: 0; }
+
+    .data-table td {
+      padding: 12px 20px;
+      vertical-align: top;
+    }
+
+    .data-table td:first-child {
+      width: 38%;
+      color: var(--ink-soft);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .data-table td:last-child {
+      color: var(--ink);
+      font-family: var(--font-mono);
+      word-break: break-all;
+    }
+
+    .code-block {
+      background: var(--bg-soft);
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre;
+      margin: 0;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .hex-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 14px;
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+    }
+
+    .hex-offset {
+      color: var(--ink-mute);
+      white-space: pre;
+    }
+
+    .hex-bytes {
+      color: var(--ink);
+      white-space: pre;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--ink);
+      color: var(--bg);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.25s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .footer { grid-template-columns: 1fr; }
+    }
+
+    .footer-card {
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s ease;
+      display: block;
+    }
+
+    .footer-card:hover {
+      border-color: var(--ink);
+      transform: translateY(-1px);
+    }
+
+    .footer-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      margin-bottom: 8px;
+    }
+
+    .footer-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .footer-desc {
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin: 0;
+    }
+
+    /* Error */
+    .error-box {
+      background: var(--danger-soft);
+      color: var(--danger);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .error-box.visible { display: block; }
+
+    /* Type badge */
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    /* Smooth focus */
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="header">
+      <div class="brand">
+        <div class="brand-mark" id="brandMark" aria-hidden="true"></div>
+        <div>
+          <h2 class="brand-title">QR Decoder</h2>
+          <div class="brand-subtitle">v1.1 · decode tool</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <a class="brand" href="https://qrcrafter.softcraft.ch/" target="_blank" rel="noopener">
+          <div class="brand-right">
+            <h2 class="brand-title">QR Crafter <span class="arrow">↗</span></h2>
+            <div class="brand-subtitle">create QR codes</div>
+          </div>
+          <div class="brand-mark" id="brandMarkCrafter" aria-hidden="true"></div>
+        </a>
+
+        <button class="theme-toggle" id="themeToggle" aria-label="Theme wechseln" title="Theme wechseln">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <line x1="12" y1="2" x2="12" y2="5"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/>
+            <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+            <line x1="2" y1="12" x2="5" y2="12"/>
+            <line x1="19" y1="12" x2="22" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/>
+            <line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1>QR-Codes <span class="accent">analysieren</span><br/>und dekodieren.</h1>
+      <p>Lade ein Bild hoch oder scanne live mit der Kamera. Sieh alle technischen Details — von der reinen Nutzlast bis zu Positionsdaten und Byte-Level.</p>
+    </section>
+
+    <div class="input-section">
+      <label class="drop-zone" id="dropZone">
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="drop-label">Bild hochladen oder hierher ziehen</div>
+        <div class="drop-hint">PNG · JPG · WebP · GIF</div>
+        <input type="file" accept="image/*" id="fileInput" />
+      </label>
+
+      <button class="drop-zone" id="cameraBtn" type="button" style="border-style: solid; border-color: var(--line);">
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <div class="drop-label">Live scannen</div>
+        <div class="drop-hint">Mit der Kamera</div>
+      </button>
+    </div>
+
+    <div class="camera-section" id="cameraSection">
+      <video id="video" playsinline></video>
+      <div class="camera-overlay">
+        <div class="scan-frame"></div>
+      </div>
+      <button class="camera-close" id="closeCameraBtn" aria-label="Kamera schließen">×</button>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="empty-state" id="emptyState">
+      → bereit zum scannen
+    </div>
+
+    <div class="result" id="result">
+      <div class="result-preview">
+        <img id="previewThumb" class="preview-thumb" alt="" />
+        <div class="preview-meta">
+          <div class="preview-status">QR-Code erkannt</div>
+          <div class="preview-filename" id="previewFilename">—</div>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-view="basic" role="tab">Basis</button>
+        <button class="tab" data-view="advanced" role="tab">Erweitert</button>
+      </div>
+
+      <!-- Basic view -->
+      <div class="view active" id="basicView">
+        <div class="data-card">
+          <div id="basicTypeBadge"></div>
+          <div class="field-label">Dekodierter Inhalt</div>
+          <div class="field-value" id="basicContent"></div>
+          <div class="action-row" id="basicActions"></div>
+        </div>
+
+        <div class="quick-stats" id="basicStats"></div>
+      </div>
+
+      <!-- Advanced view -->
+      <div class="view" id="advancedView"></div>
+    </div>
+
+    <footer class="footer">
+      <a href="https://qrcrafter.softcraft.ch/" target="_blank" rel="noopener" class="footer-card">
+        <div class="footer-eyebrow">QR-Codes erstellen</div>
+        <div class="footer-title">QR Crafter <span style="color: var(--ink-mute); font-weight: 400;">↗</span></div>
+        <p class="footer-desc">Erstelle eigene QR-Codes mit Custom-Design, Logo und Fehlerkorrektur.</p>
+      </a>
+      <div class="footer-card" style="cursor: default;">
+        <div class="footer-eyebrow">Privacy First</div>
+        <div class="footer-title">100% lokal</div>
+        <p class="footer-desc">Alle QR-Codes werden direkt im Browser dekodiert. Nichts wird hochgeladen oder gespeichert.</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <div class="toast" id="toast">Kopiert</div>
+
+  <script>
+    // Build brand marks — tiny QR-style finder pattern motifs
+    (function buildBrandMarks() {
+      function build(id, pattern) {
+        const grid = document.getElementById(id);
+        if (!grid) return;
+        pattern.forEach(cell => {
+          const span = document.createElement('span');
+          if (!cell) span.className = 'off';
+          grid.appendChild(span);
+        });
+      }
+      build('brandMark', [
+        1,1,1,0,1,
+        1,0,1,0,0,
+        1,1,1,1,1,
+        0,0,1,0,1,
+        1,1,0,1,1
+      ]);
+      build('brandMarkCrafter', [
+        1,1,0,1,1,
+        1,0,1,0,1,
+        0,1,1,1,0,
+        1,0,1,0,1,
+        1,1,0,1,1
+      ]);
+    })();
+
+    // Theme toggle
+    (function () {
+      const toggle = document.getElementById('themeToggle');
+      if (!toggle) return;
+      toggle.addEventListener('click', () => {
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        if (isLight) {
+          document.documentElement.removeAttribute('data-theme');
+          try { localStorage.setItem('qr-decoder-theme', 'dark'); } catch (_) {}
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          try { localStorage.setItem('qr-decoder-theme', 'light'); } catch (_) {}
+        }
+      });
+    })();
+
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const cameraSection = document.getElementById('cameraSection');
+    const closeCameraBtn = document.getElementById('closeCameraBtn');
+    const video = document.getElementById('video');
+    const emptyState = document.getElementById('emptyState');
+    const result = document.getElementById('result');
+    const errorBox = document.getElementById('errorBox');
+    const previewThumb = document.getElementById('previewThumb');
+    const previewFilename = document.getElementById('previewFilename');
+    const basicContent = document.getElementById('basicContent');
+    const basicTypeBadge = document.getElementById('basicTypeBadge');
+    const basicActions = document.getElementById('basicActions');
+    const basicStats = document.getElementById('basicStats');
+    const advancedView = document.getElementById('advancedView');
+    const toast = document.getElementById('toast');
+
+    let stream = null;
+    let scanLoopId = null;
+
+    // ----- Helpers -----
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.classList.add('visible');
+      setTimeout(() => errorBox.classList.remove('visible'), 4000);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => showToast('In Zwischenablage kopiert'));
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('In Zwischenablage kopiert');
+      }
+    }
+
+    // ----- Type detection -----
+    function detectType(data) {
+      if (/^https?:\/\//i.test(data)) return { id: 'url', label: 'URL · Web-Link' };
+      if (/^mailto:/i.test(data)) return { id: 'email', label: 'E-Mail-Adresse' };
+      if (/^tel:/i.test(data)) return { id: 'phone', label: 'Telefonnummer' };
+      if (/^sms:|^smsto:/i.test(data)) return { id: 'sms', label: 'SMS-Nachricht' };
+      if (/^WIFI:/i.test(data)) return { id: 'wifi', label: 'WLAN-Zugangsdaten' };
+      if (/^BEGIN:VCARD/i.test(data)) return { id: 'vcard', label: 'vCard · Kontakt' };
+      if (/^MECARD:/i.test(data)) return { id: 'mecard', label: 'MeCard · Kontakt' };
+      if (/^geo:/i.test(data)) return { id: 'geo', label: 'Geo-Koordinaten' };
+      if (/^BEGIN:VEVENT/i.test(data) || /^BEGIN:VCALENDAR/i.test(data)) return { id: 'event', label: 'Kalender-Event' };
+      if (/^bitcoin:|^ethereum:|^litecoin:/i.test(data)) return { id: 'crypto', label: 'Crypto-Adresse' };
+      if (/^otpauth:/i.test(data)) return { id: 'otp', label: 'Two-Factor-Setup' };
+      if (/^magnet:/i.test(data)) return { id: 'magnet', label: 'Magnet-Link' };
+      if (/^upi:\/\//i.test(data) || /^bezahlcode:/i.test(data)) return { id: 'payment', label: 'Zahlung' };
+      return { id: 'text', label: 'Klartext' };
+    }
+
+    // ----- Parsers for advanced view -----
+    function parseWifi(data) {
+      // WIFI:T:WPA;S:Network;P:Password;H:true;;
+      const result = {};
+      const body = data.replace(/^WIFI:/i, '');
+      const parts = body.split(/(?<!\\);/);
+      parts.forEach(p => {
+        const m = p.match(/^([A-Z]):(.*)$/i);
+        if (m) {
+          const key = m[1].toUpperCase();
+          const val = m[2].replace(/\\([\\;,":])/g, '$1');
+          if (key === 'T') result['Sicherheit'] = val || 'Keine';
+          if (key === 'S') result['SSID'] = val;
+          if (key === 'P') result['Passwort'] = val;
+          if (key === 'H') result['Versteckt'] = val === 'true' ? 'Ja' : 'Nein';
+          if (key === 'E') result['EAP-Methode'] = val;
+          if (key === 'I') result['Identität'] = val;
+        }
+      });
+      return result;
+    }
+
+    function parseVCard(data) {
+      const result = {};
+      data.split(/\r?\n/).forEach(line => {
+        const m = line.match(/^([A-Z][A-Z0-9;=]*):(.*)$/i);
+        if (!m) return;
+        const key = m[1].split(';')[0].toUpperCase();
+        const val = m[2];
+        const map = {
+          FN: 'Name',
+          N: 'Name (strukturiert)',
+          ORG: 'Organisation',
+          TITLE: 'Titel',
+          TEL: 'Telefon',
+          EMAIL: 'E-Mail',
+          URL: 'Website',
+          ADR: 'Adresse',
+          NOTE: 'Notiz',
+          BDAY: 'Geburtstag'
+        };
+        if (map[key]) {
+          if (result[map[key]]) result[map[key]] += ', ' + val;
+          else result[map[key]] = val;
+        }
+      });
+      return result;
+    }
+
+    function parseMeCard(data) {
+      const result = {};
+      const body = data.replace(/^MECARD:/i, '').replace(/;;$/, '');
+      body.split(';').forEach(p => {
+        const m = p.match(/^([A-Z]+):(.*)$/i);
+        if (m) {
+          const map = { N: 'Name', TEL: 'Telefon', EMAIL: 'E-Mail', URL: 'Website', ADR: 'Adresse', NOTE: 'Notiz', BDAY: 'Geburtstag', NICKNAME: 'Nickname' };
+          if (map[m[1].toUpperCase()]) result[map[m[1].toUpperCase()]] = m[2];
+        }
+      });
+      return result;
+    }
+
+    function parseGeo(data) {
+      const m = data.match(/^geo:([^,]+),([^,?;]+)(?:,([^?;]+))?(?:\?(.*))?$/i);
+      if (!m) return {};
+      const r = { 'Breitengrad': m[1], 'Längengrad': m[2] };
+      if (m[3]) r['Höhe'] = m[3];
+      if (m[4]) {
+        m[4].split('&').forEach(p => {
+          const [k, v] = p.split('=');
+          r[k] = v;
+        });
+      }
+      return r;
+    }
+
+    function parseEmail(data) {
+      const m = data.match(/^mailto:([^?]*)(?:\?(.*))?$/i);
+      if (!m) return {};
+      const r = { 'Adresse': decodeURIComponent(m[1] || '') };
+      if (m[2]) {
+        m[2].split('&').forEach(p => {
+          const [k, v] = p.split('=');
+          const map = { subject: 'Betreff', body: 'Nachricht', cc: 'CC', bcc: 'BCC' };
+          if (map[k.toLowerCase()]) r[map[k.toLowerCase()]] = decodeURIComponent(v || '');
+        });
+      }
+      return r;
+    }
+
+    function parseSms(data) {
+      const m = data.match(/^(?:sms|smsto):([^?:;]+)(?:[?:;](.*))?$/i);
+      if (!m) return {};
+      const r = { 'Nummer': m[1] };
+      if (m[2]) {
+        if (m[2].startsWith('body=')) r['Nachricht'] = decodeURIComponent(m[2].slice(5));
+        else r['Nachricht'] = decodeURIComponent(m[2]);
+      }
+      return r;
+    }
+
+    function parseUrl(data) {
+      try {
+        const u = new URL(data);
+        const r = {
+          'Protokoll': u.protocol.replace(':', ''),
+          'Domain': u.hostname,
+        };
+        if (u.port) r['Port'] = u.port;
+        if (u.pathname && u.pathname !== '/') r['Pfad'] = u.pathname;
+        if (u.search) {
+          r['Query'] = u.search;
+          const params = {};
+          u.searchParams.forEach((v, k) => { params[k] = v; });
+          if (Object.keys(params).length) r['Query-Parameter'] = JSON.stringify(params, null, 2);
+        }
+        if (u.hash) r['Fragment'] = u.hash;
+        return r;
+      } catch { return {}; }
+    }
+
+    function parseCrypto(data) {
+      const m = data.match(/^([a-z]+):([^?]+)(?:\?(.*))?$/i);
+      if (!m) return {};
+      const r = { 'Währung': m[1], 'Adresse': m[2] };
+      if (m[3]) {
+        m[3].split('&').forEach(p => {
+          const [k, v] = p.split('=');
+          r[k] = decodeURIComponent(v || '');
+        });
+      }
+      return r;
+    }
+
+    function parseOtp(data) {
+      const m = data.match(/^otpauth:\/\/(totp|hotp)\/([^?]+)(?:\?(.*))?$/i);
+      if (!m) return {};
+      const r = { 'Typ': m[1].toUpperCase(), 'Label': decodeURIComponent(m[2]) };
+      if (m[3]) {
+        m[3].split('&').forEach(p => {
+          const [k, v] = p.split('=');
+          r[k] = decodeURIComponent(v || '');
+        });
+      }
+      return r;
+    }
+
+    function parseByType(typeId, data) {
+      switch (typeId) {
+        case 'url': return parseUrl(data);
+        case 'email': return parseEmail(data);
+        case 'sms': return parseSms(data);
+        case 'wifi': return parseWifi(data);
+        case 'vcard': return parseVCard(data);
+        case 'mecard': return parseMeCard(data);
+        case 'geo': return parseGeo(data);
+        case 'crypto': return parseCrypto(data);
+        case 'otp': return parseOtp(data);
+        case 'phone': return { 'Nummer': data.replace(/^tel:/i, '') };
+        default: return null;
+      }
+    }
+
+    // ----- Hex dump -----
+    function toHexDump(data) {
+      const bytes = new TextEncoder().encode(data);
+      const lines = [];
+      const offsets = [];
+      for (let i = 0; i < bytes.length; i += 16) {
+        const slice = bytes.slice(i, i + 16);
+        const hex = Array.from(slice).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        const ascii = Array.from(slice).map(b => (b >= 32 && b < 127) ? String.fromCharCode(b) : '·').join('');
+        offsets.push(i.toString(16).padStart(8, '0'));
+        lines.push(hex.padEnd(48, ' ') + ' │ ' + ascii);
+      }
+      return { offsets: offsets.join('\n'), bytes: lines.join('\n'), byteLength: bytes.length };
+    }
+
+    // ----- Render result -----
+    function renderResult(code, source) {
+      emptyState.style.display = 'none';
+      result.classList.add('visible');
+      previewFilename.textContent = source.name || 'Live-Kamera-Aufnahme';
+      previewThumb.src = source.thumb || '';
+
+      const data = code.data;
+      const type = detectType(data);
+
+      // ---- Basic view ----
+      basicTypeBadge.innerHTML = `<span class="type-badge">${escapeHtml(type.label)}</span>`;
+
+      // Render value with link if URL
+      if (type.id === 'url') {
+        basicContent.innerHTML = `<a href="${escapeHtml(data)}" target="_blank" rel="noopener" class="field-value is-url" style="display: block;">${escapeHtml(data)}</a>`;
+      } else {
+        basicContent.textContent = data;
+      }
+
+      // Actions
+      basicActions.innerHTML = '';
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn';
+      copyBtn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Kopieren`;
+      copyBtn.onclick = () => copyToClipboard(data);
+      basicActions.appendChild(copyBtn);
+
+      if (type.id === 'url') {
+        const openBtn = document.createElement('a');
+        openBtn.className = 'btn primary';
+        openBtn.href = data;
+        openBtn.target = '_blank';
+        openBtn.rel = 'noopener';
+        openBtn.innerHTML = `URL öffnen <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+        basicActions.appendChild(openBtn);
+      } else if (type.id === 'email') {
+        const a = document.createElement('a');
+        a.className = 'btn primary';
+        a.href = data;
+        a.innerHTML = 'E-Mail verfassen';
+        basicActions.appendChild(a);
+      } else if (type.id === 'phone') {
+        const a = document.createElement('a');
+        a.className = 'btn primary';
+        a.href = data;
+        a.innerHTML = 'Anrufen';
+        basicActions.appendChild(a);
+      } else if (type.id === 'geo') {
+        const m = data.match(/^geo:([^,]+),([^,?;]+)/i);
+        if (m) {
+          const a = document.createElement('a');
+          a.className = 'btn primary';
+          a.href = `https://www.openstreetmap.org/?mlat=${m[1]}&mlon=${m[2]}#map=15/${m[1]}/${m[2]}`;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.innerHTML = 'In Karte zeigen';
+          basicActions.appendChild(a);
+        }
+      }
+
+      // Basic stats
+      const bytes = new TextEncoder().encode(data);
+      basicStats.innerHTML = `
+        <div class="stat">
+          <div class="stat-label">Zeichen</div>
+          <div class="stat-value">${data.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Bytes</div>
+          <div class="stat-value">${bytes.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">QR-Version</div>
+          <div class="stat-value">${code.version || '—'}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Modus</div>
+          <div class="stat-value">${(code.chunks && code.chunks[0] && code.chunks[0].type) ? code.chunks[0].type : '—'}</div>
+        </div>
+      `;
+
+      // ---- Advanced view ----
+      renderAdvanced(code, data, type, bytes);
+    }
+
+    function renderAdvanced(code, data, type, bytes) {
+      const hex = toHexDump(data);
+      const parsed = parseByType(type.id, data);
+
+      // Section 1: Content
+      let html = `
+        <div class="advanced-section">
+          <div class="section-header">
+            <h3 class="section-title">Nutzlast</h3>
+            <span class="section-badge">${type.id}</span>
+          </div>
+          <table class="data-table">
+            <tr><td>data</td><td>${escapeHtml(data)}</td></tr>
+            <tr><td>type</td><td>${escapeHtml(type.label)}</td></tr>
+            <tr><td>char_length</td><td>${data.length}</td></tr>
+            <tr><td>byte_length</td><td>${bytes.length}</td></tr>
+            <tr><td>encoding</td><td>${(code.chunks && code.chunks[0] && code.chunks[0].encoding != null) ? 'ECI ' + code.chunks[0].encoding : 'UTF-8 (inferred)'}</td></tr>
+          </table>
+        </div>
+      `;
+
+      // Section 2: Parsed structure (if applicable)
+      if (parsed && Object.keys(parsed).length > 0) {
+        let rows = '';
+        Object.entries(parsed).forEach(([k, v]) => {
+          rows += `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`;
+        });
+        html += `
+          <div class="advanced-section">
+            <div class="section-header">
+              <h3 class="section-title">Parsed Felder</h3>
+              <span class="section-badge">${type.id}-schema</span>
+            </div>
+            <table class="data-table">${rows}</table>
+          </div>
+        `;
+      }
+
+      // Section 3: QR-Code metadata
+      html += `
+        <div class="advanced-section">
+          <div class="section-header">
+            <h3 class="section-title">QR-Metadaten</h3>
+            <span class="section-badge">structure</span>
+          </div>
+          <table class="data-table">
+            <tr><td>version</td><td>${code.version != null ? code.version : '—'}</td></tr>
+            <tr><td>module_size</td><td>${code.version != null ? (17 + code.version * 4) + ' × ' + (17 + code.version * 4) : '—'}</td></tr>
+            <tr><td>chunks.length</td><td>${code.chunks ? code.chunks.length : 0}</td></tr>
+            <tr><td>binary_data.length</td><td>${code.binaryData ? code.binaryData.length : '—'} Bytes</td></tr>
+          </table>
+        </div>
+      `;
+
+      // Section 4: Location / Finder patterns
+      if (code.location) {
+        const loc = code.location;
+        const fmt = (p) => p ? `${Math.round(p.x)}, ${Math.round(p.y)}` : '—';
+        html += `
+          <div class="advanced-section">
+            <div class="section-header">
+              <h3 class="section-title">Position im Bild</h3>
+              <span class="section-badge">finder · alignment</span>
+            </div>
+            <table class="data-table">
+              <tr><td>topLeftCorner</td><td>${fmt(loc.topLeftCorner)}</td></tr>
+              <tr><td>topRightCorner</td><td>${fmt(loc.topRightCorner)}</td></tr>
+              <tr><td>bottomLeftCorner</td><td>${fmt(loc.bottomLeftCorner)}</td></tr>
+              <tr><td>bottomRightCorner</td><td>${fmt(loc.bottomRightCorner)}</td></tr>
+              <tr><td>topLeftFinderPattern</td><td>${fmt(loc.topLeftFinderPattern)}</td></tr>
+              <tr><td>topRightFinderPattern</td><td>${fmt(loc.topRightFinderPattern)}</td></tr>
+              <tr><td>bottomLeftFinderPattern</td><td>${fmt(loc.bottomLeftFinderPattern)}</td></tr>
+              <tr><td>bottomRightAlignmentPattern</td><td>${fmt(loc.bottomRightAlignmentPattern)}</td></tr>
+            </table>
+          </div>
+        `;
+      }
+
+      // Section 5: Chunks (raw)
+      if (code.chunks && code.chunks.length > 0) {
+        html += `
+          <div class="advanced-section">
+            <div class="section-header">
+              <h3 class="section-title">Chunks</h3>
+              <span class="section-badge">${code.chunks.length} segment(e)</span>
+            </div>
+            <div style="padding: 14px 20px;">
+              <pre class="code-block">${escapeHtml(JSON.stringify(code.chunks.map(c => ({
+                type: c.type,
+                text: c.text,
+                ...(c.assignmentNumber != null && { assignmentNumber: c.assignmentNumber }),
+                ...(c.bytes && { byteCount: c.bytes.length })
+              })), null, 2))}</pre>
+            </div>
+          </div>
+        `;
+      }
+
+      // Section 6: Hex dump
+      html += `
+        <div class="advanced-section">
+          <div class="section-header">
+            <h3 class="section-title">Hex Dump</h3>
+            <span class="section-badge">${hex.byteLength} bytes</span>
+          </div>
+          <div style="padding: 14px 20px;">
+            <div class="hex-grid">
+              <div class="hex-offset">${hex.offsets}</div>
+              <div class="hex-bytes">${escapeHtml(hex.bytes)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Section 7: Raw JSON
+      html += `
+        <div class="advanced-section">
+          <div class="section-header">
+            <h3 class="section-title">Raw Output (jsQR)</h3>
+            <span class="section-badge">json</span>
+          </div>
+          <div style="padding: 14px 20px;">
+            <pre class="code-block">${escapeHtml(JSON.stringify({
+              data: code.data,
+              version: code.version,
+              chunks: code.chunks,
+              location: code.location
+            }, (k, v) => k === 'binaryData' ? '[Uint8ClampedArray]' : v, 2))}</pre>
+          </div>
+        </div>
+      `;
+
+      advancedView.innerHTML = html;
+    }
+
+    // ----- Decode -----
+    function decodeImageData(imageData) {
+      return jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'attemptBoth'
+      });
+    }
+
+    function processFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          // Limit size for performance
+          const maxDim = 1200;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            const ratio = Math.min(maxDim / w, maxDim / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const code = decodeImageData(imageData);
+          if (code) {
+            renderResult(code, { name: file.name, thumb: e.target.result });
+          } else {
+            showError('Kein QR-Code im Bild gefunden. Versuch ein klareres Bild.');
+          }
+        };
+        img.onerror = () => showError('Bild konnte nicht geladen werden.');
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ----- Event listeners -----
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) processFile(e.target.files[0]);
+    });
+
+    // Drag and drop
+    ['dragenter', 'dragover'].forEach(ev => {
+      dropZone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+    });
+    ['dragleave', 'drop'].forEach(ev => {
+      dropZone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+      });
+    });
+    dropZone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) processFile(file);
+      else showError('Bitte ein Bild ablegen.');
+    });
+
+    // Paste support
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) processFile(file);
+          break;
+        }
+      }
+    });
+
+    // Camera
+    cameraBtn.addEventListener('click', async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        video.srcObject = stream;
+        await video.play();
+        cameraSection.classList.add('active');
+        emptyState.style.display = 'none';
+        startScanLoop();
+      } catch (err) {
+        showError('Kamera-Zugriff verweigert oder nicht verfügbar.');
+      }
+    });
+
+    function startScanLoop() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+      function scan() {
+        if (!stream || video.readyState !== video.HAVE_ENOUGH_DATA) {
+          scanLoopId = requestAnimationFrame(scan);
+          return;
+        }
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = decodeImageData(imageData);
+        if (code) {
+          // Create thumb
+          const thumbCanvas = document.createElement('canvas');
+          thumbCanvas.width = 200;
+          thumbCanvas.height = 200 * (canvas.height / canvas.width);
+          thumbCanvas.getContext('2d').drawImage(video, 0, 0, thumbCanvas.width, thumbCanvas.height);
+          renderResult(code, { name: 'Kamera-Scan', thumb: thumbCanvas.toDataURL('image/jpeg', 0.7) });
+          stopCamera();
+        } else {
+          scanLoopId = requestAnimationFrame(scan);
+        }
+      }
+      scanLoopId = requestAnimationFrame(scan);
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      if (scanLoopId) {
+        cancelAnimationFrame(scanLoopId);
+        scanLoopId = null;
+      }
+      cameraSection.classList.remove('active');
+    }
+
+    closeCameraBtn.addEventListener('click', stopCamera);
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.view + 'View').classList.add('active');
+      });
+    });
+
+    // Stop camera on tab change/page hide
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && stream) stopCamera();
+    });
+  </script>
+</body>
+</html>

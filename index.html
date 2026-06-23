@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="de" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>ToolVault</title>
+
+    <!-- Favicon: Hammer, Farbe folgt per JS dem aktiven Theme -->
+    <link rel="icon" id="favicon" type="image/svg+xml" />
+
+    <!-- #region Fonts -->
+    <!-- Montserrat trägt den Lesetext (Karten), JetBrains Mono die Persönlichkeit.
+         Laden über das Netz – fallen sauber auf System-Fonts zurück, wenn offline. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <!-- #endregion -->
+
+    <style>
+      /* Sanftes Überblenden zwischen Seiten statt weissem Aufblitzen.
+         Wirkt bei gleicher Domain; jede Tool-Seite muss dieselbe Zeile haben. */
+      @view-transition {
+        navigation: auto;
+      }
+
+      /* #region 1 · Farben / Themes
+         Jedes Theme ist nur ein Satz Variablen. Eigenes Theme bauen:
+         einen [data-theme="..."]-Block kopieren, Name + Hex-Werte ändern,
+         den Namen unten ins THEMES-Array (im <script>) eintragen.
+         Aktives Theme steht im <html data-theme="...">. */
+      :root {
+        /* Default-Werte, werden vom aktiven Theme überschrieben */
+        --bg: #15120f;
+        --surface: #1e1a16;
+        --surface-2: #26211c;
+        --border: #353029;
+        --text: #f0e9df;
+        --text-muted: #9a8e7f;
+        --accent: #e8a23c;
+        --accent-contrast: #1a1510;
+        --accent-soft: rgba(232, 162, 60, 0.14);
+      }
+
+      [data-theme='graphite'] {
+        /* warmes Anthrazit + Ringelblume */
+        --bg: #15120f;
+        --surface: #1e1a16;
+        --surface-2: #26211c;
+        --border: #353029;
+        --text: #f0e9df;
+        --text-muted: #9a8e7f;
+        --accent: #e8a23c;
+        --accent-contrast: #1a1510;
+        --accent-soft: rgba(232, 162, 60, 0.14);
+      }
+      [data-theme='blueprint'] {
+        /* Tiefes Marineblau + Cyan */
+        --bg: #0e1726;
+        --surface: #15233a;
+        --surface-2: #1c2d47;
+        --border: #294063;
+        --text: #e7eef7;
+        --text-muted: #8aa0bd;
+        --accent: #4fd1e0;
+        --accent-contrast: #07131f;
+        --accent-soft: rgba(79, 209, 224, 0.14);
+      }
+      [data-theme='paper'] {
+        /* Helles Papier + Tinte (Punkt = weiss) */
+        --bg: #f2eee6;
+        --surface: #fbf8f2;
+        --surface-2: #ffffff;
+        --border: #dad2c4;
+        --text: #20201c;
+        --text-muted: #6e6658;
+        --accent: #f2eee6;
+        --accent-contrast: #fff7f2;
+        --accent-soft: rgba(214, 73, 47, 0.1);
+      }
+      [data-theme='moss'] {
+        /* Dunkelgrün + Limette */
+        --bg: #0f1511;
+        --surface: #161e18;
+        --surface-2: #1e2820;
+        --border: #2c3a2f;
+        --text: #e8efe6;
+        --text-muted: #8da08c;
+        --accent: #9bd64a;
+        --accent-contrast: #11160e;
+        --accent-soft: rgba(155, 214, 74, 0.14);
+      }
+      [data-theme='plum'] {
+        /* Aubergine + Warmes Rosa */
+        --bg: #170f1a;
+        --surface: #211726;
+        --surface-2: #2a1e31;
+        --border: #3d2b45;
+        --text: #f1e8f2;
+        --text-muted: #a893ac;
+        --accent: #ef8fb4;
+        --accent-contrast: #1a0f1d;
+        --accent-soft: rgba(239, 143, 180, 0.14);
+      }
+      /* #endregion */
+
+      /* #region 2 · Grundlagen */
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+        background: var(--bg);
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        /* Lesetext = Montserrat */
+        font-family:
+          'Montserrat',
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        line-height: 1.5;
+        transition:
+          background 0.25s ease,
+          color 0.25s ease;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        width: 100%;
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 28px 24px 64px;
+      }
+      /* #endregion */
+
+      /* #region 3 · Kopfzeile */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 56px;
+      }
+      .wordmark {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        font-size: 1.05rem;
+        letter-spacing: -0.01em;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+      }
+      .wordmark .prompt {
+        color: var(--accent);
+      }
+      .wordmark .cursor {
+        display: inline-block;
+        width: 9px;
+        height: 1.05em;
+        background: var(--accent);
+        margin-left: 2px;
+        transform: translateY(2px);
+        animation: blink 1.1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      /* Theme-Punkte */
+      .themes {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .theme-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid var(--border);
+        background: var(--dot);
+        cursor: pointer;
+        padding: 0;
+        transition:
+          transform 0.12s ease,
+          border-color 0.12s ease;
+      }
+      .theme-dot:hover {
+        transform: scale(1.15);
+      }
+      .theme-dot[aria-pressed='true'] {
+        border-color: var(--text);
+        transform: scale(1.15);
+      }
+
+      /* Sprach-Umschalter */
+      .lang {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+      }
+      .lang button {
+        background: none;
+        border: 0;
+        font: inherit;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 2px 2px;
+        border-bottom: 1px solid transparent;
+        transition:
+          color 0.15s ease,
+          border-color 0.15s ease;
+      }
+      .lang button:hover {
+        color: var(--accent);
+      }
+      .lang button[aria-pressed='true'] {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .lang .divider {
+        color: var(--text-muted);
+        opacity: 0.4;
+      }
+
+      /* Senkrechter Trenner in der Navbar */
+      .nav-divider {
+        width: 1px;
+        height: 16px;
+        background: var(--border);
+        flex: none;
+      }
+
+      .link-inline {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        text-decoration: none;
+        color: var(--text-muted);
+        border-bottom: 1px solid transparent;
+        transition:
+          color 0.15s ease,
+          border-color 0.15s ease;
+      }
+      .link-inline:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      /* #endregion */
+
+      /* #region 4 · Hero / Suche — der Held der Seite */
+      .tagline {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0 0 18px;
+      }
+      .search-shell {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0 18px;
+        height: 68px;
+        transition:
+          border-color 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+      .search-shell:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+      .search-shell .glyph {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: var(--accent);
+        font-size: 1.2rem;
+        flex: none;
+      }
+      #search {
+        flex: 1;
+        background: transparent;
+        border: 0;
+        outline: 0;
+        color: var(--text);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.15rem;
+      }
+      #search::placeholder {
+        color: var(--text-muted);
+      }
+      .kbd {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 7px;
+        flex: none;
+      }
+      .meta {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin: 12px 2px 0;
+      }
+      /* #endregion */
+
+      /* #region 5 · Raster / Karten */
+      .grid {
+        margin-top: 34px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+        text-decoration: none;
+        color: var(--text);
+        min-height: 150px;
+        transition:
+          transform 0.14s ease,
+          border-color 0.14s ease,
+          background 0.14s ease;
+      }
+      .card:hover,
+      .card.is-active {
+        transform: translateY(-3px);
+        border-color: var(--accent);
+        background: var(--surface-2);
+      }
+      .card:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .card-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--accent);
+        letter-spacing: 0.04em;
+      }
+      .card-name {
+        font-weight: 600;
+        font-size: 1.02rem;
+        line-height: 1.25;
+      }
+      .card-desc {
+        font-size: 0.86rem;
+        color: var(--text-muted);
+        flex: 1;
+      }
+      .card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .tag {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 2px 6px;
+      }
+      mark {
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 3px;
+        padding: 0 1px;
+      }
+      .is-hidden {
+        display: none !important;
+      }
+      .empty {
+        display: none;
+        margin-top: 34px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+      .empty.show {
+        display: block;
+      }
+      /* #endregion */
+
+      /* #region 6 · Fusszeile */
+      .footer {
+        margin-top: 56px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.76rem;
+        color: var(--text-muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+      }
+      .footer a {
+        color: var(--text-muted);
+        text-decoration: none;
+      }
+      .footer a:hover {
+        color: var(--accent);
+      }
+      .footer .sep {
+        opacity: 0.5;
+      }
+      /* #endregion */
+
+      /* #region 7 · Responsive + Reduced Motion */
+      @media (max-width: 540px) {
+        .wrap {
+          padding: 22px 16px 48px;
+        }
+        .topbar {
+          margin-bottom: 40px;
+        }
+        .search-shell {
+          height: 60px;
+          padding: 0 14px;
+        }
+        #search {
+          font-size: 1rem;
+        }
+        .kbd {
+          display: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+      /* #endregion */
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <!-- #region Kopfzeile -->
+      <header class="topbar">
+        <a class="wordmark" id="wordmark" href="/">
+          <span class="prompt">~/</span><span id="wm-name">ToolVault</span
+          ><span class="cursor" aria-hidden="true"></span>
+        </a>
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group"></div>
+          <div class="lang" id="lang" role="group">
+            <button data-lang="de">DE</button>
+            <span class="divider" aria-hidden="true">·</span>
+            <button data-lang="en">EN</button>
+          </div>
+          <span class="nav-divider" aria-hidden="true"></span>
+          <a class="link-inline" id="linkedin" href="#" target="_blank" rel="noopener">in ↗</a>
+        </div>
+      </header>
+      <!-- #endregion -->
+
+      <!-- #region Hero / Suche -->
+      <p class="tagline" id="tagline"></p>
+
+      <div class="search-shell">
+        <span class="glyph" aria-hidden="true">▸</span>
+        <input id="search" type="text" autocomplete="off" spellcheck="false" />
+        <span class="kbd">/ or f</span>
+      </div>
+      <p class="meta" id="meta"></p>
+      <!-- #endregion -->
+
+      <!-- #region Raster (wird per JS aus dem TOOLS-Array gefüllt) -->
+      <main class="grid" id="grid"></main>
+      <p class="empty" id="empty"></p>
+      <!-- #endregion -->
+
+      <!-- #region Fusszeile -->
+      <footer class="footer">
+        <span
+          ><span id="built-by"></span>
+          <a id="author-link" href="#" target="_blank" rel="noopener"></a
+        ></span>
+        <span class="sep">·</span>
+        <a id="footer-linkedin" href="#" target="_blank" rel="noopener"></a>
+        <span class="sep">·</span>
+        <span id="year"></span>
+        <span class="sep">·</span>
+        <span id="version"></span>
+      </footer>
+      <!-- #endregion -->
+    </div>
+
+    <script>
+      // #region Konfiguration — hier zuerst deine Daten eintragen
+      const SITE = {
+        name: 'ToolVault', // erscheint oben + im Browser-Tab
+        // Tagline pro Sprache:
+        tagline: {
+          de: 'Kleine Tools, die ich für mich selbst gebaut habe.',
+          en: 'Small tools I built for myself.',
+        },
+        author: 'A. Marro',
+        linkedin: 'https://www.linkedin.com/in/andras-marro-5801491a5/',
+        defaultTheme: 'graphite', // Start-Theme
+        defaultLang: 'en', // Start-Sprache: 'de' oder 'en' (gilt bei jedem Refresh)
+        version: '1.3', // ToolVault Hub-Version
+      };
+
+      /* Reihenfolge + Namen der Themes für die Punkte oben rechts.
+         Neues Theme: oben im CSS einen [data-theme="..."]-Block anlegen,
+         dann hier { id, label } ergänzen. */
+      const THEMES = [
+        { id: 'graphite', label: 'Graphite' },
+        { id: 'blueprint', label: 'Blueprint' },
+        { id: 'moss', label: 'Moss' },
+        { id: 'plum', label: 'Plum' },
+        { id: 'paper', label: 'Paper' },
+      ];
+      // #endregion
+
+      // #region Sprachen — Texte der Oberfläche (DE / EN)
+      const I18N = {
+        de: {
+          searchPlaceholder: 'Tools durchsuchen…',
+          searchAria: 'Tools durchsuchen',
+          themesAria: 'Farbschema wählen',
+          langAria: 'Sprache wählen',
+          metaAll: (n) => n + ' Tools · „/“ zum Fokussieren',
+          metaSome: (v, n) => v + ' von ' + n + ' Tools · „/“ zum Fokussieren',
+          empty: (q) => 'Keine Tools für „' + q + '“. Anderes Stichwort versuchen.',
+          builtBy: 'gebaut von',
+          linkedin: 'LinkedIn',
+        },
+        en: {
+          searchPlaceholder: 'Search tools…',
+          searchAria: 'Search tools',
+          themesAria: 'Choose colour theme',
+          langAria: 'Choose language',
+          metaAll: (n) => n + ' tools · press “/” to focus',
+          metaSome: (v, n) => v + ' of ' + n + ' tools · press “/” to focus',
+          empty: (q) => 'No tools for “' + q + '”. Try another keyword.',
+          builtBy: 'built by',
+          linkedin: 'LinkedIn',
+        },
+      };
+      // #endregion
+
+      /* #region TOOLS — dein Modul zum Kopieren
+         Pro Tool ein Objekt. Block kopieren, Werte ändern, fertig.
+         name und desc dürfen ein Text ODER ein Objekt { de, en } sein:
+         {
+           name: 'Gleich in beiden Sprachen'  ODER  { de: '…', en: '…' },
+           desc: { de: 'Ein Satz, was es macht.', en: 'One line about it.' },
+           url:  '/unterordner/',      // interner Pfad ODER volle https-URL
+           tags: ['stichwort', '…']    // Liste (gleich in beiden Sprachen)
+                                       //   ODER { de: [...], en: [...] }
+         }
+         Tags werden auf der Karte in der aktiven Sprache gezeigt und immer
+         in beiden Sprachen durchsucht – egal in welcher Sprache man tippt. */
+      const TOOLS = [
+        {
+          name: 'QR-Decoder',
+          desc: {
+            de: 'QR-Codes dekodieren und Daten extrahieren.',
+            en: 'Decode QR codes and extract data.',
+          },
+          url: './qr-decoder/qr-decoder.html',
+          tags: ['qr', 'generator', 'decoder', 'scan'],
+        },
+
+        /* ----- Ab hier Beispiele: anpassen oder löschen ----- */
+        {
+          name: { de: 'Farb-Konverter', en: 'Color Converter' },
+          desc: {
+            de: 'Zwischen HEX, RGB und HSL umrechnen.',
+            en: 'Convert between HEX, RGB and HSL.',
+          },
+          url: './color/',
+          tags: {
+            de: ['farbe', 'hex', 'rgb', 'design'],
+            en: ['color', 'hex', 'rgb', 'design'],
+          },
+        },
+        {
+          name: 'JSON-Formatter',
+          desc: {
+            de: 'JSON einlesen, prüfen und sauber einrücken.',
+            en: 'Parse, validate and pretty-print JSON.',
+          },
+          url: './json/',
+          tags: ['json', 'format', 'dev'], // Kurzform: gleich in beiden Sprachen
+        },
+        {
+          name: { de: 'Einheiten-Rechner', en: 'Unit Converter' },
+          desc: {
+            de: 'Längen, Gewichte und Temperaturen umrechnen.',
+            en: 'Convert lengths, weights and temperatures.',
+          },
+          url: './units/',
+          tags: {
+            de: ['rechner', 'umrechnen', 'einheiten'],
+            en: ['converter', 'units', 'convert'],
+          },
+        },
+        {
+          name: { de: 'Passwort-Generator', en: 'Password Generator' },
+          desc: {
+            de: 'Zufällige, starke Passwörter erzeugen.',
+            en: 'Create strong, random passwords.',
+          },
+          url: './password/',
+          tags: {
+            de: ['passwort', 'sicherheit', 'zufall'],
+            en: ['password', 'security', 'random'],
+          },
+        },
+      ];
+      // #endregion
+
+      // #region Logik — normalerweise nichts ändern nötig
+      const $ = (s) => document.querySelector(s);
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+
+      let LANG = SITE.defaultLang;
+
+      // Text ODER { de, en } -> aktueller Sprachstring
+      const loc = (v) => (v && typeof v === 'object' ? (v[LANG] ?? v.de ?? v.en ?? '') : v);
+      // alle Sprachvarianten zusammen (für die Suche)
+      const allText = (v) => (v && typeof v === 'object' ? Object.values(v).join(' ') : v || '');
+
+      // Tags: Liste ODER { de, en } -> Liste in aktueller Sprache
+      const tagList = (tags, lang) => {
+        if (!tags) return [];
+        if (Array.isArray(tags)) return tags;
+        return tags[lang] || tags.de || tags.en || [];
+      };
+      // Tags: alle Sprachen zusammen (für die Suche)
+      const tagsAll = (tags) => {
+        if (!tags) return [];
+        if (Array.isArray(tags)) return tags;
+        return [].concat(tags.de || [], tags.en || []);
+      };
+
+      // Hammer-Favicon in den Theme-Farben bauen und setzen
+      function buildFavicon() {
+        const cs = getComputedStyle(document.documentElement);
+        const accent = cs.getPropertyValue('--accent').trim() || '#e8a23c';
+        const plate = cs.getPropertyValue('--text').trim() || '#f0e9df';
+        const svg =
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+          '<rect x="2" y="2" width="28" height="28" rx="7" fill="' +
+          plate +
+          '"/>' +
+          '<g transform="rotate(45 16 16)" fill="' +
+          accent +
+          '">' +
+          '<rect x="14" y="6.5" width="4" height="15" rx="1.6"/>' +
+          '<rect x="8.5" y="5" width="15" height="6" rx="2"/>' +
+          '</g></svg>';
+        const link = document.getElementById('favicon');
+        if (link) link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+      }
+
+      // Suchbegriff im Text markieren (HTML-sicher)
+      function highlight(text, q) {
+        const safe = esc(text);
+        if (!q) return safe;
+        const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+        return safe.replace(re, '<mark>$1</mark>');
+      }
+
+      // --- Theme-Punkte aufbauen ---
+      function setTheme(id) {
+        document.documentElement.setAttribute('data-theme', id);
+        document.documentElement.style.colorScheme = id === 'paper' ? 'light' : 'dark';
+        document
+          .querySelectorAll('.theme-dot')
+          .forEach((d) =>
+            d.setAttribute('aria-pressed', d.dataset.theme === id ? 'true' : 'false'),
+          );
+        buildFavicon(); // Favicon-Farbe an neues Theme anpassen
+        try {
+          localStorage.setItem('hub-theme', id);
+        } catch (e) {}
+      }
+      const themesEl = $('#themes');
+      THEMES.forEach((t) => {
+        // Akzentfarbe des Punktes aus dem jeweiligen Theme-Block holen
+        const probe = document.createElement('div');
+        probe.setAttribute('data-theme', t.id);
+        probe.style.display = 'none';
+        document.body.appendChild(probe);
+        const accent = getComputedStyle(probe).getPropertyValue('--accent').trim();
+        probe.remove();
+
+        const b = document.createElement('button');
+        b.className = 'theme-dot';
+        b.dataset.theme = t.id;
+        b.style.setProperty('--dot', accent);
+        b.title = t.label;
+        b.setAttribute('aria-label', t.label);
+        b.addEventListener('click', () => setTheme(t.id));
+        themesEl.appendChild(b);
+      });
+      let startTheme = SITE.defaultTheme;
+      try {
+        startTheme = localStorage.getItem('hub-theme') || startTheme;
+      } catch (e) {}
+      setTheme(startTheme);
+
+      // --- Karten aus TOOLS erzeugen ---
+      const grid = $('#grid');
+      const items = TOOLS.map((tool, i) => {
+        const a = document.createElement('a');
+        a.className = 'card';
+        a.href = tool.url;
+
+        const id = document.createElement('span');
+        id.className = 'card-id mono';
+        id.textContent = String(i + 1).padStart(2, '0');
+
+        const name = document.createElement('span');
+        name.className = 'card-name';
+
+        const desc = document.createElement('span');
+        desc.className = 'card-desc';
+
+        const tagsEl = document.createElement('span');
+        tagsEl.className = 'card-tags';
+
+        a.append(id, name, desc, tagsEl);
+        grid.appendChild(a);
+
+        // Suche kennt beide Sprachen + alle Tags
+        const haystack = (
+          allText(tool.name) +
+          ' ' +
+          allText(tool.desc) +
+          ' ' +
+          tagsAll(tool.tags).join(' ')
+        ).toLowerCase();
+        return { el: a, tool, name, desc, tagsEl, haystack };
+      });
+
+      // Tags der Karten in der aktuellen Sprache neu zeichnen
+      function renderTags() {
+        items.forEach((it) => {
+          it.tagsEl.innerHTML = '';
+          tagList(it.tool.tags, LANG).forEach((t) => {
+            const s = document.createElement('span');
+            s.className = 'tag';
+            s.textContent = t;
+            it.tagsEl.appendChild(s);
+          });
+        });
+      }
+
+      // --- Filtern + Tastatursteuerung ---
+      const search = $('#search');
+      const meta = $('#meta');
+      const empty = $('#empty');
+      let visible = [];
+      let active = -1;
+
+      function setActive(idx) {
+        items.forEach((it) => it.el.classList.remove('is-active'));
+        active = idx;
+        if (idx >= 0 && visible[idx]) {
+          visible[idx].el.classList.add('is-active');
+          visible[idx].el.scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      function filter() {
+        const dict = I18N[LANG];
+        const q = search.value.trim().toLowerCase();
+        visible = [];
+        items.forEach((it) => {
+          const match = !q || it.haystack.includes(q);
+          it.el.classList.toggle('is-hidden', !match);
+          if (match) {
+            it.name.innerHTML = highlight(loc(it.tool.name), q);
+            it.desc.innerHTML = highlight(loc(it.tool.desc), q);
+            visible.push(it);
+          }
+        });
+        const total = items.length;
+        meta.textContent = q ? dict.metaSome(visible.length, total) : dict.metaAll(total);
+        empty.classList.toggle('show', visible.length === 0);
+        if (visible.length === 0 && q) empty.textContent = dict.empty(search.value.trim());
+        setActive(visible.length ? 0 : -1);
+      }
+
+      // --- Sprache anwenden ---
+      function applyLang(lang) {
+        LANG = I18N[lang] ? lang : 'de';
+        const dict = I18N[LANG];
+        document.documentElement.lang = LANG;
+
+        $('#tagline').textContent = loc(SITE.tagline);
+        search.placeholder = dict.searchPlaceholder;
+        search.setAttribute('aria-label', dict.searchAria);
+        $('#themes').setAttribute('aria-label', dict.themesAria);
+        $('#lang').setAttribute('aria-label', dict.langAria);
+        $('#built-by').textContent = dict.builtBy;
+        $('#footer-linkedin').textContent = dict.linkedin;
+
+        document
+          .querySelectorAll('#lang button')
+          .forEach((b) =>
+            b.setAttribute('aria-pressed', b.dataset.lang === LANG ? 'true' : 'false'),
+          );
+
+        renderTags(); // Tags in neuer Sprache
+        filter(); // Karten + Meta in neuer Sprache neu zeichnen
+      }
+
+      document.querySelectorAll('#lang button').forEach((b) => {
+        b.addEventListener('click', () => applyLang(b.dataset.lang));
+      });
+
+      // --- Sprachunabhängige Personalisierung ---
+      $('#wm-name').textContent = SITE.name;
+      document.title = SITE.name;
+      $('#author-link').textContent = SITE.author;
+      ['#linkedin', '#footer-linkedin', '#author-link'].forEach(
+        (sel) => ($(sel).href = SITE.linkedin),
+      );
+      $('#year').textContent = '© ' + new Date().getFullYear();
+      $('#version').textContent = 'v' + SITE.version;
+
+      // --- Tastatur ---
+      search.addEventListener('input', filter);
+      search.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (visible.length) setActive((active + 1) % visible.length);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (visible.length) setActive((active - 1 + visible.length) % visible.length);
+        } else if (e.key === 'Enter') {
+          if (visible[active]) window.location.href = visible[active].tool.url;
+        } else if (e.key === 'Escape') {
+          search.value = '';
+          filter();
+          search.blur();
+        }
+      });
+      // "/" von überall fokussiert die Suche
+      document.addEventListener('keydown', (e) => {
+        if (e.key === '/' || (e.key === 'f' && document.activeElement !== search)) {
+          e.preventDefault();
+          search.focus();
+        }
+      });
+
+      // --- Seiten vorab laden (gegen das weisse Aufblitzen beim Klick) ---
+      const isExternal = (u) => /^(?:[a-z]+:)?\/\//i.test(u); // http(s):// oder //
+      const prefetched = new Set();
+      function prefetch(url) {
+        if (!url || isExternal(url) || prefetched.has(url)) return;
+        prefetched.add(url);
+        const l = document.createElement('link');
+        l.rel = 'prefetch';
+        l.href = url;
+        document.head.appendChild(l);
+      }
+      // Im Leerlauf alle internen Tool-Seiten holen …
+      const prefetchAll = () => TOOLS.forEach((t) => prefetch(t.url));
+      if ('requestIdleCallback' in window) requestIdleCallback(prefetchAll);
+      else setTimeout(prefetchAll, 800);
+      // … und beim Hover sofort (falls der Leerlauf-Prefetch noch nicht durch ist)
+      items.forEach((it) =>
+        it.el.addEventListener('mouseenter', () => prefetch(it.tool.url), { once: true }),
+      );
+
+      // --- Start ---
+      // Sprache startet immer auf SITE.defaultLang (wird nicht gespeichert),
+      // der Umschalter gilt nur für die laufende Sitzung.
+      applyLang(SITE.defaultLang);
+      search.focus();
+      // #endregion
+    </script>
+  </body>
+</html>

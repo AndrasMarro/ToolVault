@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNIT · Universal Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     Design tokens — engineering paper meets instrument panel
+     ========================================================= */
+  :root {
+    --paper: #F0EBE0;
+    --paper-dim: #E5DFD1;
+    --ink: #14110D;
+    --ink-soft: #4A463E;
+    --ink-mute: #8A8478;
+    --rule: #C8C0AE;
+    --accent: #D9461E;
+    --accent-soft: #F5D5C5;
+    --signal: #2E5F3E;
+    --warn: #B8841C;
+    --display-bg: #1A1814;
+    --display-fg: #E8DCC4;
+    --display-accent: #FF7A3D;
+    --display-green: #6FD08F;
+
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  ::selection { background: var(--accent); color: var(--paper); }
+
+  body {
+    background-image:
+      linear-gradient(var(--rule) 1px, transparent 1px),
+      linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: linear-gradient(180deg, var(--paper) 0%, transparent 30%, transparent 70%, var(--paper) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 32px 32px 96px;
+  }
+
+  /* =========================================================
+     Header
+     ========================================================= */
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 24px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 32px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .brand .mark {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 7vw, 88px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    font-style: italic;
+  }
+  .brand .mark .dot { color: var(--accent); font-style: normal; }
+  .brand .tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-soft);
+    border: 1px solid var(--ink-soft);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+  .meta {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+  }
+  .meta .row { display: block; }
+  .meta .row strong { color: var(--ink); font-weight: 500; }
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px;
+    background: var(--signal); border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+
+  /* =========================================================
+     Mode selector — each mode has its own personality
+     ========================================================= */
+  .modes {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0;
+    border: 1px solid var(--ink);
+    margin-bottom: 24px;
+    background: var(--paper-dim);
+  }
+  .mode {
+    padding: 14px 16px;
+    border-right: 1px solid var(--ink);
+    cursor: pointer;
+    background: transparent;
+    text-align: left;
+    font-family: var(--font-body);
+    transition: background 0.15s, color 0.15s;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 78px;
+  }
+  .mode:last-child { border-right: none; }
+  .mode:hover { background: var(--paper); }
+  .mode .num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-mute);
+  }
+  .mode .name { font-weight: 600; font-size: 14px; color: var(--ink); }
+  .mode .hint { font-size: 11px; color: var(--ink-soft); margin-top: auto; }
+  .mode.active { background: var(--ink); color: var(--paper); }
+  .mode.active .num,
+  .mode.active .name,
+  .mode.active .hint { color: var(--paper); }
+  .mode.active .num { color: var(--accent); }
+
+  /* =========================================================
+     Settings — only shown when relevant
+     ========================================================= */
+  .settings {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: var(--paper-dim);
+    border: 1px solid var(--rule);
+    margin-bottom: 24px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .settings label {
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .settings .precision-input {
+    width: 50px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .settings .opt { display: flex; align-items: center; gap: 6px; }
+  .settings.hidden { display: none; }
+
+  /* =========================================================
+     Panels
+     ========================================================= */
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    position: relative;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .panel-head .id { color: var(--accent); }
+  .panel-body { padding: 20px; }
+
+  /* =========================================================
+     Inputs
+     ========================================================= */
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--ink);
+    border-radius: 0;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2314110D' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  .input-big {
+    font-family: var(--font-mono);
+    font-size: 28px !important;
+    padding: 18px 14px !important;
+    font-weight: 500;
+  }
+
+  .quick-units {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 8px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.12s;
+    color: var(--ink-soft);
+  }
+  .chip:hover { border-color: var(--ink); color: var(--ink); }
+  .chip.active {
+    background: var(--ink); color: var(--paper); border-color: var(--ink);
+  }
+
+  /* =========================================================
+     Readout — instrument display
+     ========================================================= */
+  .readout {
+    background: var(--display-bg);
+    color: var(--display-fg);
+    border: 1px solid var(--ink);
+    padding: 24px;
+    font-family: var(--font-mono);
+    position: relative;
+    overflow: hidden;
+  }
+  .readout::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 2px,
+      rgba(255,255,255,0.018) 2px,
+      rgba(255,255,255,0.018) 3px
+    );
+    pointer-events: none;
+  }
+  .readout .label-line {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--display-accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .readout .result-val {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    word-break: break-all;
+  }
+  .readout .result-unit {
+    color: var(--display-accent);
+    margin-left: 4px;
+  }
+  .readout .sub {
+    margin-top: 12px;
+    font-size: 12px;
+    color: rgba(232,220,196,0.6);
+    letter-spacing: 0.05em;
+  }
+  .readout .err {
+    font-size: 14px;
+    color: #FF6B5B;
+    margin-top: 8px;
+  }
+
+  /* Scientific mode — equation prominently displayed in readout */
+  .readout .eq-display {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 28px;
+    color: var(--display-fg);
+    margin: 12px 0 4px;
+    text-align: center;
+    padding: 12px;
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* =========================================================
+     Steps
+     ========================================================= */
+  .steps {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--rule);
+  }
+  .steps h4 {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .step {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .step:last-child { border-bottom: none; }
+  .step .n { color: var(--accent); font-weight: 700; font-size: 11px; }
+  .step .formula { color: var(--ink); }
+  .step .formula .op { color: var(--ink-soft); }
+  .step .note { color: var(--ink-soft); font-style: italic; font-size: 12px; }
+
+  /* SI base unit chip in scientific mode */
+  .si-base-chip {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--ink);
+    border: 1px solid var(--accent);
+    padding: 3px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin-top: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* =========================================================
+     Physics formulas
+     ========================================================= */
+  .formulas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .formula-card {
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    cursor: pointer;
+    background: var(--paper);
+    transition: all 0.12s;
+  }
+  .formula-card:hover { border-color: var(--ink); background: var(--paper-dim); }
+  .formula-card.active { border-color: var(--accent); background: var(--accent-soft); }
+  .formula-card .eq {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 20px;
+    color: var(--ink);
+  }
+  .formula-card .name {
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  .physics-input-group { display: flex; gap: 6px; }
+  .physics-input-group input { flex: 1; }
+  .physics-input-group select { flex: 0 0 90px; }
+
+  /* =========================================================
+     Info note (e.g. KB/KiB explainer)
+     ========================================================= */
+  .info-note {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    margin: 16px 0 0;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  .info-note h5 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+  .info-note p { margin-bottom: 8px; }
+  .info-note p:last-child { margin-bottom: 0; }
+  .info-note code {
+    font-family: var(--font-mono);
+    background: rgba(217, 70, 30, 0.12);
+    padding: 1px 5px;
+    font-size: 12px;
+  }
+
+  /* =========================================================
+     CURRENCY — its own dark trading terminal
+     ========================================================= */
+  .fx-panel {
+    background: var(--display-bg);
+    color: var(--display-fg);
+    border: 1px solid var(--ink);
+    overflow: hidden;
+  }
+  .fx-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: #0F0D0A;
+    border-bottom: 1px solid #2A2620;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--display-accent);
+  }
+  .fx-head .live {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--display-green);
+  }
+  .fx-head .live::before {
+    content: ""; width: 6px; height: 6px; background: var(--display-green);
+    border-radius: 50%; animation: pulse 2s ease-in-out infinite;
+  }
+  .fx-head .refresh-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--display-fg);
+    padding: 4px 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .fx-head .refresh-btn:hover { border-color: var(--display-accent); color: var(--display-accent); }
+
+  .fx-body { padding: 24px; }
+
+  .fx-converter {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: stretch;
+    margin-bottom: 24px;
+  }
+  .fx-side {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .fx-side-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(232,220,196,0.5);
+  }
+  .fx-currency-pick {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.12);
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+  .fx-currency-pick:hover { border-color: var(--display-accent); }
+  .fx-flag {
+    font-size: 28px;
+    line-height: 1;
+    filter: saturate(1.1);
+  }
+  .fx-code-name {
+    flex: 1;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .fx-code {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--display-fg);
+    letter-spacing: 0.05em;
+  }
+  .fx-cname {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: rgba(232,220,196,0.55);
+  }
+  .fx-amount-input {
+    background: transparent !important;
+    border: none !important;
+    color: var(--display-fg) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 36px !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.15) !important;
+    font-weight: 500 !important;
+  }
+  .fx-amount-input:focus {
+    outline: none;
+    border-bottom-color: var(--display-accent) !important;
+    box-shadow: none !important;
+  }
+  .fx-result-val {
+    font-family: var(--font-mono);
+    font-size: 36px;
+    font-weight: 500;
+    color: var(--display-accent);
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    line-height: 1.15;
+    word-break: break-all;
+  }
+  .fx-swap {
+    display: flex; align-items: center;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--display-fg);
+    padding: 0 16px;
+    font-size: 18px;
+    cursor: pointer;
+    align-self: center;
+    height: 48px;
+    transition: all 0.12s;
+  }
+  .fx-swap:hover { border-color: var(--display-accent); color: var(--display-accent); }
+
+  .fx-rate-line {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: rgba(232,220,196,0.65);
+    padding: 12px 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
+    letter-spacing: 0.03em;
+  }
+  .fx-rate-line strong { color: var(--display-fg); }
+
+  /* Currency picker modal */
+  .fx-picker {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 100;
+    padding: 60px 20px 20px;
+  }
+  .fx-picker.open { display: flex; }
+  .fx-picker-inner {
+    background: var(--display-bg);
+    border: 1px solid var(--display-accent);
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 80px);
+    display: flex; flex-direction: column;
+    color: var(--display-fg);
+  }
+  .fx-picker-head {
+    padding: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .fx-picker-search {
+    flex: 1;
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    color: var(--display-fg) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
+  }
+  .fx-picker-search:focus {
+    outline: none;
+    border-color: var(--display-accent) !important;
+    box-shadow: none !important;
+  }
+  .fx-picker-close {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: var(--display-fg);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .fx-picker-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .fx-picker-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .fx-picker-item:hover { background: rgba(255,122,61,0.1); }
+  .fx-picker-item.selected { background: rgba(255,122,61,0.15); }
+  .fx-picker-item .pflag { font-size: 24px; }
+  .fx-picker-item .pcode { font-family: var(--font-mono); font-weight: 700; min-width: 50px; }
+  .fx-picker-item .pname { font-size: 13px; color: rgba(232,220,196,0.7); }
+  .fx-picker-empty {
+    padding: 32px; text-align: center; color: rgba(232,220,196,0.5);
+    font-family: var(--font-mono); font-size: 13px;
+  }
+
+  /* FX popular pairs strip */
+  .fx-popular {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .fx-popular-item {
+    background: var(--display-bg);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.12s;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .fx-popular-item:hover { background: rgba(255,122,61,0.08); }
+  .fx-popular-pair {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(232,220,196,0.6);
+    letter-spacing: 0.05em;
+  }
+  .fx-popular-rate {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    color: var(--display-fg);
+    font-weight: 500;
+  }
+
+  .fx-section-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(232,220,196,0.5);
+    margin-bottom: 12px;
+  }
+
+  /* =========================================================
+     Footer
+     ========================================================= */
+  .footer-grid {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.05em;
+  }
+  .footer-grid h5 {
+    font-family: var(--font-body);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .footer-grid p { line-height: 1.7; }
+
+  /* =========================================================
+     Responsive
+     ========================================================= */
+  @media (max-width: 920px) {
+    .modes { grid-template-columns: repeat(3, 1fr); }
+    .mode:nth-child(3n) { border-right: none; }
+    .mode { border-bottom: 1px solid var(--ink); }
+    .mode:nth-last-child(-n+3) { border-bottom: none; }
+    .panel-grid { grid-template-columns: 1fr; }
+    .fx-converter { grid-template-columns: 1fr; }
+    .fx-swap { transform: rotate(90deg); height: 36px; padding: 0 10px; align-self: center; justify-self: center; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 20px 16px 60px; }
+    .modes { grid-template-columns: repeat(2, 1fr); }
+    .mode { border-right: 1px solid var(--ink); }
+    .mode:nth-child(3n) { border-right: 1px solid var(--ink); }
+    .mode:nth-child(2n) { border-right: none; }
+    .mode:nth-last-child(-n+2) { border-bottom: none; }
+    header { grid-template-columns: 1fr; }
+    .meta { text-align: left; }
+    .field-row { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot, .fx-head .live::before { animation: none; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <h1 class="mark">unit<span class="dot">.</span></h1>
+      <span class="tag">Universal Converter · v2</span>
+    </div>
+    <div class="meta">
+      <span class="row"><span class="live-dot"></span><strong id="clock">—</strong> CET</span>
+      <span class="row">SI · IMPERIAL · DERIVED · PHYSICS</span>
+    </div>
+  </header>
+
+  <div class="modes" role="tablist">
+    <button class="mode active" data-mode="basic" role="tab">
+      <span class="num">01 / MODE</span>
+      <span class="name">Basic</span>
+      <span class="hint">Quick · result only</span>
+    </button>
+    <button class="mode" data-mode="scientific" role="tab">
+      <span class="num">02 / MODE</span>
+      <span class="name">Scientific</span>
+      <span class="hint">Steps · formulas · SI</span>
+    </button>
+    <button class="mode" data-mode="engineering" role="tab">
+      <span class="num">03 / MODE</span>
+      <span class="name">Engineering</span>
+      <span class="hint">Sci. notation · high precision</span>
+    </button>
+    <button class="mode" data-mode="physics" role="tab">
+      <span class="num">04 / MODE</span>
+      <span class="name">Physics</span>
+      <span class="hint">Formulas · solve any variable</span>
+    </button>
+    <button class="mode" data-mode="chemistry" role="tab">
+      <span class="num">05 / MODE</span>
+      <span class="name">Chemistry</span>
+      <span class="hint">Moles · concentration · density</span>
+    </button>
+    <button class="mode" data-mode="currency" role="tab">
+      <span class="num">06 / MODE</span>
+      <span class="name">Currency</span>
+      <span class="hint">Live FX · 160+ pairs</span>
+    </button>
+  </div>
+
+  <div id="settings" class="settings"></div>
+  <div id="mode-content"></div>
+
+  <div class="footer-grid">
+    <div>
+      <h5>About</h5>
+      <p>A precision unit conversion instrument. Six modes, fifteen categories, real-time FX. Built for engineers, students, and anyone who needs the answer right.</p>
+    </div>
+    <div>
+      <h5>Modes at a glance</h5>
+      <p><strong>Basic</strong> — fast lookup<br><strong>Scientific</strong> — shows the math<br><strong>Engineering</strong> — sci. notation<br><strong>Physics</strong> — formula solver</p>
+    </div>
+    <div>
+      <h5>Coverage</h5>
+      <p>Length · Mass · Volume · Temperature · Time · Speed · Area · Pressure · Force · Energy · Power · Frequency · Voltage · Current · Resistance · Data</p>
+    </div>
+    <div>
+      <h5>FX data</h5>
+      <p>Live rates via open.er-api.com. Updates daily. Offline fallback included.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Currency picker overlay -->
+<div class="fx-picker" id="fxPicker">
+  <div class="fx-picker-inner">
+    <div class="fx-picker-head">
+      <input type="text" id="fxSearch" class="fx-picker-search" placeholder="Search: EUR, Japan, Yen…" autocomplete="off">
+      <button class="fx-picker-close" id="fxPickerClose">Close</button>
+    </div>
+    <div class="fx-picker-list" id="fxPickerList"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// UNIT DEFINITIONS
+// ============================================================
+const UNITS = {
+  length: {
+    base: 'm', label: 'Length', dim: 'L',
+    units: {
+      'mm':    { factor: 0.001,        name: 'millimeter' },
+      'cm':    { factor: 0.01,         name: 'centimeter' },
+      'm':     { factor: 1,            name: 'meter' },
+      'km':    { factor: 1000,         name: 'kilometer' },
+      'inch':  { factor: 0.0254,       name: 'inch' },
+      'ft':    { factor: 0.3048,       name: 'foot' },
+      'yd':    { factor: 0.9144,       name: 'yard' },
+      'mile':  { factor: 1609.344,     name: 'mile' },
+      'nm':    { factor: 1e-9,         name: 'nanometer' },
+      'μm':    { factor: 1e-6,         name: 'micrometer' },
+      'au':    { factor: 1.495978707e11, name: 'astronomical unit' },
+      'ly':    { factor: 9.4607304725808e15, name: 'light-year' }
+    }
+  },
+  mass: {
+    base: 'kg', label: 'Mass / Weight', dim: 'M',
+    units: {
+      'mg':  { factor: 1e-6,         name: 'milligram' },
+      'g':   { factor: 0.001,        name: 'gram' },
+      'kg':  { factor: 1,            name: 'kilogram' },
+      'ton': { factor: 1000,         name: 'metric ton' },
+      'lb':  { factor: 0.45359237,   name: 'pound' },
+      'oz':  { factor: 0.028349523125, name: 'ounce' },
+      'st':  { factor: 6.35029318,   name: 'stone' },
+      'μg':  { factor: 1e-9,         name: 'microgram' }
+    }
+  },
+  volume: {
+    base: 'L', label: 'Volume', dim: 'L³',
+    units: {
+      'ml':       { factor: 0.001,        name: 'milliliter' },
+      'cl':       { factor: 0.01,         name: 'centiliter' },
+      'L':        { factor: 1,            name: 'liter' },
+      'm³':       { factor: 1000,         name: 'cubic meter' },
+      'cm³':      { factor: 0.001,        name: 'cubic centimeter' },
+      'gal_US':   { factor: 3.785411784,  name: 'US gallon' },
+      'gal_UK':   { factor: 4.54609,      name: 'UK gallon' },
+      'pint_US':  { factor: 0.473176473,  name: 'US pint' },
+      'cup_US':   { factor: 0.2365882365, name: 'US cup' },
+      'fl_oz_US': { factor: 0.0295735296, name: 'US fluid ounce' }
+    }
+  },
+  temperature: {
+    base: 'K', label: 'Temperature', dim: 'Θ',
+    nonlinear: true,
+    units: {
+      '°C': { name: 'Celsius' },
+      '°F': { name: 'Fahrenheit' },
+      'K':  { name: 'Kelvin' },
+      '°R': { name: 'Rankine' }
+    }
+  },
+  time: {
+    base: 's', label: 'Time', dim: 'T',
+    units: {
+      'ms':   { factor: 0.001,    name: 'millisecond' },
+      's':    { factor: 1,        name: 'second' },
+      'min':  { factor: 60,       name: 'minute' },
+      'hour': { factor: 3600,     name: 'hour' },
+      'day':  { factor: 86400,    name: 'day' },
+      'week': { factor: 604800,   name: 'week' },
+      'year': { factor: 31557600, name: 'year (Julian)' },
+      'μs':   { factor: 1e-6,     name: 'microsecond' },
+      'ns':   { factor: 1e-9,     name: 'nanosecond' }
+    }
+  },
+  speed: {
+    base: 'm/s', label: 'Speed', dim: 'L·T⁻¹',
+    units: {
+      'm/s':  { factor: 1,         name: 'meters per second' },
+      'km/h': { factor: 1/3.6,     name: 'kilometers per hour' },
+      'mph':  { factor: 0.44704,   name: 'miles per hour' },
+      'ft/s': { factor: 0.3048,    name: 'feet per second' },
+      'knot': { factor: 0.514444,  name: 'knot' },
+      'mach': { factor: 343,       name: 'Mach (at 20°C)' }
+    }
+  },
+  area: {
+    base: 'm²', label: 'Area', dim: 'L²',
+    units: {
+      'mm²':  { factor: 1e-6,       name: 'square mm' },
+      'cm²':  { factor: 1e-4,       name: 'square cm' },
+      'm²':   { factor: 1,          name: 'square meter' },
+      'km²':  { factor: 1e6,        name: 'square km' },
+      'ha':   { factor: 10000,      name: 'hectare' },
+      'acre': { factor: 4046.8564224, name: 'acre' },
+      'ft²':  { factor: 0.09290304, name: 'square foot' },
+      'in²':  { factor: 0.00064516, name: 'square inch' }
+    }
+  },
+  pressure: {
+    base: 'Pa', label: 'Pressure', dim: 'M·L⁻¹·T⁻²',
+    units: {
+      'Pa':   { factor: 1,         name: 'pascal' },
+      'kPa':  { factor: 1000,      name: 'kilopascal' },
+      'MPa':  { factor: 1e6,       name: 'megapascal' },
+      'bar':  { factor: 100000,    name: 'bar' },
+      'mbar': { factor: 100,       name: 'millibar' },
+      'atm':  { factor: 101325,    name: 'atmosphere' },
+      'psi':  { factor: 6894.757293168, name: 'pounds per sq inch' },
+      'torr': { factor: 133.322387415,  name: 'torr (mmHg)' }
+    }
+  },
+  force: {
+    base: 'N', label: 'Force', dim: 'M·L·T⁻²',
+    units: {
+      'N':    { factor: 1,         name: 'newton' },
+      'kN':   { factor: 1000,      name: 'kilonewton' },
+      'MN':   { factor: 1e6,       name: 'meganewton' },
+      'dyne': { factor: 1e-5,      name: 'dyne' },
+      'lbf':  { factor: 4.4482216152605, name: 'pound-force' },
+      'kgf':  { factor: 9.80665,   name: 'kilogram-force' }
+    }
+  },
+  energy: {
+    base: 'J', label: 'Energy', dim: 'M·L²·T⁻²',
+    units: {
+      'J':    { factor: 1,         name: 'joule' },
+      'kJ':   { factor: 1000,      name: 'kilojoule' },
+      'MJ':   { factor: 1e6,       name: 'megajoule' },
+      'Wh':   { factor: 3600,      name: 'watt-hour' },
+      'kWh':  { factor: 3.6e6,     name: 'kilowatt-hour' },
+      'cal':  { factor: 4.184,     name: 'calorie' },
+      'kcal': { factor: 4184,      name: 'kilocalorie' },
+      'eV':   { factor: 1.602176634e-19, name: 'electronvolt' },
+      'BTU':  { factor: 1055.05585262,   name: 'British thermal unit' },
+      'erg':  { factor: 1e-7,      name: 'erg' }
+    }
+  },
+  power: {
+    base: 'W', label: 'Power', dim: 'M·L²·T⁻³',
+    units: {
+      'W':    { factor: 1,         name: 'watt' },
+      'kW':   { factor: 1000,      name: 'kilowatt' },
+      'MW':   { factor: 1e6,       name: 'megawatt' },
+      'GW':   { factor: 1e9,       name: 'gigawatt' },
+      'hp':   { factor: 745.6998715822702, name: 'horsepower (mech.)' },
+      'PS':   { factor: 735.49875, name: 'metric horsepower' },
+      'BTU/h': { factor: 0.29307107, name: 'BTU/hour' }
+    }
+  },
+  frequency: {
+    base: 'Hz', label: 'Frequency', dim: 'T⁻¹',
+    units: {
+      'Hz':  { factor: 1,    name: 'hertz' },
+      'kHz': { factor: 1e3,  name: 'kilohertz' },
+      'MHz': { factor: 1e6,  name: 'megahertz' },
+      'GHz': { factor: 1e9,  name: 'gigahertz' },
+      'THz': { factor: 1e12, name: 'terahertz' },
+      'rpm': { factor: 1/60, name: 'revolutions per minute' }
+    }
+  },
+  voltage: {
+    base: 'V', label: 'Voltage', dim: 'M·L²·T⁻³·I⁻¹',
+    units: {
+      'μV':  { factor: 1e-6, name: 'microvolt' },
+      'mV':  { factor: 0.001, name: 'millivolt' },
+      'V':   { factor: 1,    name: 'volt' },
+      'kV':  { factor: 1000, name: 'kilovolt' },
+      'MV':  { factor: 1e6,  name: 'megavolt' }
+    }
+  },
+  current: {
+    base: 'A', label: 'Electric Current', dim: 'I',
+    units: {
+      'μA':  { factor: 1e-6, name: 'microampere' },
+      'mA':  { factor: 0.001, name: 'milliampere' },
+      'A':   { factor: 1,    name: 'ampere' },
+      'kA':  { factor: 1000, name: 'kiloampere' }
+    }
+  },
+  resistance: {
+    base: 'Ω', label: 'Resistance', dim: 'M·L²·T⁻³·I⁻²',
+    units: {
+      'mΩ': { factor: 0.001, name: 'milliohm' },
+      'Ω':  { factor: 1,    name: 'ohm' },
+      'kΩ': { factor: 1000, name: 'kiloohm' },
+      'MΩ': { factor: 1e6,  name: 'megaohm' }
+    }
+  },
+  data: {
+    base: 'B', label: 'Digital Storage', dim: '—',
+    note: 'kb_vs_kib',
+    units: {
+      'bit':  { factor: 0.125, name: 'bit' },
+      'B':    { factor: 1,     name: 'byte' },
+      'kB':   { factor: 1000,  name: 'kilobyte (SI, 10³)' },
+      'KiB':  { factor: 1024,  name: 'kibibyte (binary, 2¹⁰)' },
+      'MB':   { factor: 1e6,   name: 'megabyte (SI)' },
+      'MiB':  { factor: 1048576, name: 'mebibyte (binary)' },
+      'GB':   { factor: 1e9,   name: 'gigabyte (SI)' },
+      'GiB':  { factor: 1073741824, name: 'gibibyte (binary)' },
+      'TB':   { factor: 1e12,  name: 'terabyte (SI)' },
+      'TiB':  { factor: 1099511627776, name: 'tebibyte (binary)' }
+    }
+  }
+};
+
+// ============================================================
+// PHYSICS FORMULAS
+// ============================================================
+const FORMULAS = {
+  newton_2nd:  { eq: 'F = m · a',        name: 'Newton\'s 2nd Law',
+                 vars: [
+                   {k:'F', label:'Force', cat:'force', solveFor:true},
+                   {k:'m', label:'Mass', cat:'mass'},
+                   {k:'a', label:'Acceleration', cat:null, unit:'m/s²'}
+                 ],
+                 solve: (F,m,a) => ({F: m*a, m: F/a, a: F/m})},
+  kinetic_e:   { eq: 'E = ½ · m · v²',   name: 'Kinetic Energy',
+                 vars: [
+                   {k:'E', label:'Energy', cat:'energy', solveFor:true},
+                   {k:'m', label:'Mass', cat:'mass'},
+                   {k:'v', label:'Velocity', cat:'speed'}
+                 ],
+                 solve: (E,m,v) => ({E: 0.5*m*v*v, m: 2*E/(v*v), v: Math.sqrt(2*E/m)})},
+  pot_e:       { eq: 'E = m · g · h',    name: 'Gravitational PE',
+                 vars: [
+                   {k:'E', label:'Energy', cat:'energy', solveFor:true},
+                   {k:'m', label:'Mass', cat:'mass'},
+                   {k:'h', label:'Height', cat:'length'}
+                 ],
+                 solve: (E,m,h) => ({E: m*9.80665*h, m: E/(9.80665*h), h: E/(m*9.80665)})},
+  momentum:    { eq: 'p = m · v',        name: 'Momentum',
+                 vars: [
+                   {k:'p', label:'Momentum', cat:null, unit:'kg·m/s', solveFor:true},
+                   {k:'m', label:'Mass', cat:'mass'},
+                   {k:'v', label:'Velocity', cat:'speed'}
+                 ],
+                 solve: (p,m,v) => ({p: m*v, m: p/v, v: p/m})},
+  ohms_law:    { eq: 'V = I · R',        name: 'Ohm\'s Law',
+                 vars: [
+                   {k:'V', label:'Voltage', cat:'voltage', solveFor:true},
+                   {k:'I', label:'Current', cat:'current'},
+                   {k:'R', label:'Resistance', cat:'resistance'}
+                 ],
+                 solve: (V,I,R) => ({V: I*R, I: V/R, R: V/I})},
+  el_power:    { eq: 'P = V · I',        name: 'Electrical Power',
+                 vars: [
+                   {k:'P', label:'Power', cat:'power', solveFor:true},
+                   {k:'V', label:'Voltage', cat:'voltage'},
+                   {k:'I', label:'Current', cat:'current'}
+                 ],
+                 solve: (P,V,I) => ({P: V*I, V: P/I, I: P/V})},
+  wave_speed:  { eq: 'v = f · λ',        name: 'Wave Equation',
+                 vars: [
+                   {k:'v', label:'Wave speed', cat:'speed', solveFor:true},
+                   {k:'f', label:'Frequency', cat:'frequency'},
+                   {k:'λ', label:'Wavelength', cat:'length'}
+                 ],
+                 solve: (v,f,L) => ({v: f*L, f: v/L, λ: v/f})},
+  photon_e:    { eq: 'E = h · f',        name: 'Photon Energy',
+                 vars: [
+                   {k:'E', label:'Energy', cat:'energy', solveFor:true},
+                   {k:'f', label:'Frequency', cat:'frequency'}
+                 ],
+                 solve: (E,f) => ({E: 6.62607015e-34 * f, f: E / 6.62607015e-34})},
+  mass_energy: { eq: 'E = m · c²',       name: 'Mass-Energy',
+                 vars: [
+                   {k:'E', label:'Energy', cat:'energy', solveFor:true},
+                   {k:'m', label:'Mass', cat:'mass'}
+                 ],
+                 solve: (E,m) => { const c = 299792458; return {E: m*c*c, m: E/(c*c)}; }}
+};
+
+// ============================================================
+// CURRENCY METADATA — flags + names
+// ============================================================
+const CURRENCY_META = {
+  USD: { name: 'US Dollar',           country: 'United States',    flag: '🇺🇸' },
+  EUR: { name: 'Euro',                country: 'Eurozone',         flag: '🇪🇺' },
+  GBP: { name: 'Pound Sterling',      country: 'United Kingdom',   flag: '🇬🇧' },
+  JPY: { name: 'Yen',                 country: 'Japan',            flag: '🇯🇵' },
+  CHF: { name: 'Swiss Franc',         country: 'Switzerland',      flag: '🇨🇭' },
+  CAD: { name: 'Canadian Dollar',     country: 'Canada',           flag: '🇨🇦' },
+  AUD: { name: 'Australian Dollar',   country: 'Australia',        flag: '🇦🇺' },
+  NZD: { name: 'New Zealand Dollar',  country: 'New Zealand',      flag: '🇳🇿' },
+  CNY: { name: 'Renminbi',            country: 'China',            flag: '🇨🇳' },
+  HKD: { name: 'Hong Kong Dollar',    country: 'Hong Kong',        flag: '🇭🇰' },
+  SGD: { name: 'Singapore Dollar',    country: 'Singapore',        flag: '🇸🇬' },
+  KRW: { name: 'South Korean Won',    country: 'South Korea',      flag: '🇰🇷' },
+  INR: { name: 'Indian Rupee',        country: 'India',            flag: '🇮🇳' },
+  TRY: { name: 'Turkish Lira',        country: 'Türkiye',          flag: '🇹🇷' },
+  RUB: { name: 'Russian Ruble',       country: 'Russia',           flag: '🇷🇺' },
+  BRL: { name: 'Brazilian Real',      country: 'Brazil',           flag: '🇧🇷' },
+  MXN: { name: 'Mexican Peso',        country: 'Mexico',           flag: '🇲🇽' },
+  ZAR: { name: 'South African Rand',  country: 'South Africa',     flag: '🇿🇦' },
+  SEK: { name: 'Swedish Krona',       country: 'Sweden',           flag: '🇸🇪' },
+  NOK: { name: 'Norwegian Krone',     country: 'Norway',           flag: '🇳🇴' },
+  DKK: { name: 'Danish Krone',        country: 'Denmark',          flag: '🇩🇰' },
+  PLN: { name: 'Polish Złoty',        country: 'Poland',           flag: '🇵🇱' },
+  CZK: { name: 'Czech Koruna',        country: 'Czech Republic',   flag: '🇨🇿' },
+  HUF: { name: 'Hungarian Forint',    country: 'Hungary',          flag: '🇭🇺' },
+  RON: { name: 'Romanian Leu',        country: 'Romania',          flag: '🇷🇴' },
+  BGN: { name: 'Bulgarian Lev',       country: 'Bulgaria',         flag: '🇧🇬' },
+  ISK: { name: 'Icelandic Króna',     country: 'Iceland',          flag: '🇮🇸' },
+  ILS: { name: 'Israeli Shekel',      country: 'Israel',           flag: '🇮🇱' },
+  SAR: { name: 'Saudi Riyal',         country: 'Saudi Arabia',     flag: '🇸🇦' },
+  AED: { name: 'UAE Dirham',          country: 'United Arab Emirates', flag: '🇦🇪' },
+  QAR: { name: 'Qatari Riyal',        country: 'Qatar',            flag: '🇶🇦' },
+  KWD: { name: 'Kuwaiti Dinar',       country: 'Kuwait',           flag: '🇰🇼' },
+  BHD: { name: 'Bahraini Dinar',      country: 'Bahrain',          flag: '🇧🇭' },
+  OMR: { name: 'Omani Rial',          country: 'Oman',             flag: '🇴🇲' },
+  JOD: { name: 'Jordanian Dinar',     country: 'Jordan',           flag: '🇯🇴' },
+  EGP: { name: 'Egyptian Pound',      country: 'Egypt',            flag: '🇪🇬' },
+  MAD: { name: 'Moroccan Dirham',     country: 'Morocco',          flag: '🇲🇦' },
+  TND: { name: 'Tunisian Dinar',      country: 'Tunisia',          flag: '🇹🇳' },
+  THB: { name: 'Thai Baht',           country: 'Thailand',         flag: '🇹🇭' },
+  MYR: { name: 'Malaysian Ringgit',   country: 'Malaysia',         flag: '🇲🇾' },
+  IDR: { name: 'Indonesian Rupiah',   country: 'Indonesia',        flag: '🇮🇩' },
+  PHP: { name: 'Philippine Peso',     country: 'Philippines',      flag: '🇵🇭' },
+  VND: { name: 'Vietnamese Đồng',     country: 'Vietnam',          flag: '🇻🇳' },
+  TWD: { name: 'New Taiwan Dollar',   country: 'Taiwan',           flag: '🇹🇼' },
+  PKR: { name: 'Pakistani Rupee',     country: 'Pakistan',         flag: '🇵🇰' },
+  BDT: { name: 'Bangladeshi Taka',    country: 'Bangladesh',       flag: '🇧🇩' },
+  LKR: { name: 'Sri Lankan Rupee',    country: 'Sri Lanka',        flag: '🇱🇰' },
+  NPR: { name: 'Nepalese Rupee',      country: 'Nepal',            flag: '🇳🇵' },
+  KZT: { name: 'Kazakhstani Tenge',   country: 'Kazakhstan',       flag: '🇰🇿' },
+  UAH: { name: 'Ukrainian Hryvnia',   country: 'Ukraine',          flag: '🇺🇦' },
+  BYN: { name: 'Belarusian Ruble',    country: 'Belarus',          flag: '🇧🇾' },
+  RSD: { name: 'Serbian Dinar',       country: 'Serbia',           flag: '🇷🇸' },
+  ALL: { name: 'Albanian Lek',        country: 'Albania',          flag: '🇦🇱' },
+  MKD: { name: 'Macedonian Denar',    country: 'North Macedonia',  flag: '🇲🇰' },
+  BAM: { name: 'Convertible Mark',    country: 'Bosnia & Herzegovina', flag: '🇧🇦' },
+  MDL: { name: 'Moldovan Leu',        country: 'Moldova',          flag: '🇲🇩' },
+  GEL: { name: 'Georgian Lari',       country: 'Georgia',          flag: '🇬🇪' },
+  AMD: { name: 'Armenian Dram',       country: 'Armenia',          flag: '🇦🇲' },
+  AZN: { name: 'Azerbaijani Manat',   country: 'Azerbaijan',       flag: '🇦🇿' },
+  ARS: { name: 'Argentine Peso',      country: 'Argentina',        flag: '🇦🇷' },
+  CLP: { name: 'Chilean Peso',        country: 'Chile',            flag: '🇨🇱' },
+  COP: { name: 'Colombian Peso',      country: 'Colombia',         flag: '🇨🇴' },
+  PEN: { name: 'Peruvian Sol',        country: 'Peru',             flag: '🇵🇪' },
+  UYU: { name: 'Uruguayan Peso',      country: 'Uruguay',          flag: '🇺🇾' },
+  VES: { name: 'Venezuelan Bolívar',  country: 'Venezuela',        flag: '🇻🇪' },
+  NGN: { name: 'Nigerian Naira',      country: 'Nigeria',          flag: '🇳🇬' },
+  KES: { name: 'Kenyan Shilling',     country: 'Kenya',            flag: '🇰🇪' },
+  GHS: { name: 'Ghanaian Cedi',       country: 'Ghana',            flag: '🇬🇭' },
+  ETB: { name: 'Ethiopian Birr',      country: 'Ethiopia',         flag: '🇪🇹' },
+  UGX: { name: 'Ugandan Shilling',    country: 'Uganda',           flag: '🇺🇬' },
+  TZS: { name: 'Tanzanian Shilling',  country: 'Tanzania',         flag: '🇹🇿' },
+  XAF: { name: 'Central African CFA', country: 'Central Africa',   flag: '🌍' },
+  XOF: { name: 'West African CFA',    country: 'West Africa',      flag: '🌍' },
+  MMK: { name: 'Burmese Kyat',        country: 'Myanmar',          flag: '🇲🇲' },
+  KHR: { name: 'Cambodian Riel',      country: 'Cambodia',         flag: '🇰🇭' },
+  LAK: { name: 'Lao Kip',             country: 'Laos',             flag: '🇱🇦' },
+  AFN: { name: 'Afghan Afghani',      country: 'Afghanistan',      flag: '🇦🇫' },
+  IQD: { name: 'Iraqi Dinar',         country: 'Iraq',             flag: '🇮🇶' },
+  IRR: { name: 'Iranian Rial',        country: 'Iran',             flag: '🇮🇷' },
+  SYP: { name: 'Syrian Pound',        country: 'Syria',            flag: '🇸🇾' },
+  LBP: { name: 'Lebanese Pound',      country: 'Lebanon',          flag: '🇱🇧' },
+  YER: { name: 'Yemeni Rial',         country: 'Yemen',            flag: '🇾🇪' },
+  CRC: { name: 'Costa Rican Colón',   country: 'Costa Rica',       flag: '🇨🇷' },
+  GTQ: { name: 'Guatemalan Quetzal',  country: 'Guatemala',        flag: '🇬🇹' },
+  HNL: { name: 'Honduran Lempira',    country: 'Honduras',         flag: '🇭🇳' },
+  DOP: { name: 'Dominican Peso',      country: 'Dominican Republic', flag: '🇩🇴' },
+  JMD: { name: 'Jamaican Dollar',     country: 'Jamaica',          flag: '🇯🇲' },
+  TTD: { name: 'Trinidad Dollar',     country: 'Trinidad & Tobago', flag: '🇹🇹' },
+  BBD: { name: 'Barbadian Dollar',    country: 'Barbados',         flag: '🇧🇧' },
+  XCD: { name: 'East Caribbean Dollar', country: 'Eastern Caribbean', flag: '🌎' },
+  BSD: { name: 'Bahamian Dollar',     country: 'Bahamas',          flag: '🇧🇸' },
+  BMD: { name: 'Bermudian Dollar',    country: 'Bermuda',          flag: '🇧🇲' },
+  KYD: { name: 'Cayman Islands Dollar', country: 'Cayman Islands', flag: '🇰🇾' },
+  FJD: { name: 'Fijian Dollar',       country: 'Fiji',             flag: '🇫🇯' },
+  PGK: { name: 'Papua Guinean Kina',  country: 'Papua New Guinea', flag: '🇵🇬' },
+  XPF: { name: 'CFP Franc',           country: 'French Polynesia', flag: '🇵🇫' }
+};
+
+function fxMeta(code) {
+  return CURRENCY_META[code] || { name: code, country: '—', flag: '💱' };
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  mode: 'basic',
+  precision: 4,
+  notation: 'auto',
+  category: 'length',
+  fromUnit: 'm',
+  toUnit: 'cm',
+  value: '1',
+  fxRates: null,
+  fxBase: 'USD',
+  fxTimestamp: null,
+  fxValue: '100',
+  fxFrom: 'USD',
+  fxTo: 'EUR',
+  fxPickerTarget: null,
+  fxSearchQuery: '',
+  physicsFormula: 'newton_2nd',
+  physicsSolveFor: 'F',
+  physicsVals: {},
+  chem: { mode: 'mol_g', mass: '18.015', mol: '1', grams: '', volume: '1', density_g_cm3: '1.0' }
+};
+
+// ============================================================
+// CORE CONVERSION
+// ============================================================
+function convert(value, fromUnit, toUnit, categoryKey) {
+  const cat = UNITS[categoryKey];
+  if (!cat) return { err: `Unknown category` };
+  if (cat.nonlinear) return convertTemperature(value, fromUnit, toUnit);
+
+  const from = cat.units[fromUnit];
+  const to = cat.units[toUnit];
+  if (!from || !to) return { err: `Unit not found` };
+
+  const inBase = value * from.factor;
+  const result = inBase / to.factor;
+
+  return {
+    result, inBase,
+    fromFactor: from.factor, toFactor: to.factor,
+    base: cat.base,
+    fromName: from.name, toName: to.name,
+    dim: cat.dim
+  };
+}
+
+function convertTemperature(v, from, to) {
+  let K;
+  switch(from) {
+    case '°C': K = v + 273.15; break;
+    case '°F': K = (v - 32) * 5/9 + 273.15; break;
+    case 'K':  K = v; break;
+    case '°R': K = v * 5/9; break;
+    default: return { err: 'Unknown temperature unit' };
+  }
+  if (K < 0) return { err: 'Below absolute zero — physically impossible' };
+  let result;
+  switch(to) {
+    case '°C': result = K - 273.15; break;
+    case '°F': result = (K - 273.15) * 9/5 + 32; break;
+    case 'K':  result = K; break;
+    case '°R': result = K * 9/5; break;
+  }
+  return {
+    result, inBase: K, base: 'K',
+    fromName: UNITS.temperature.units[from].name,
+    toName: UNITS.temperature.units[to].name,
+    dim: 'Θ', temperature: true,
+    fromUnit: from, toUnit: to, inputVal: v
+  };
+}
+
+// ============================================================
+// FORMATTING
+// ============================================================
+function formatNumber(n, precision, notation) {
+  if (n === null || n === undefined || !isFinite(n)) return '—';
+  precision = (precision === undefined) ? state.precision : precision;
+  notation = notation || state.notation;
+  const abs = Math.abs(n);
+
+  if (notation === 'scientific') return n.toExponential(precision);
+  if (notation === 'engineering') {
+    if (n === 0) return '0';
+    const exp = Math.floor(Math.log10(abs) / 3) * 3;
+    return `${(n / Math.pow(10, exp)).toFixed(precision)}×10${superscript(exp)}`;
+  }
+  if (notation === 'decimal') return Number(n.toFixed(precision)).toString();
+  // auto
+  if (abs !== 0 && (abs < 1e-4 || abs >= 1e7)) return n.toExponential(precision);
+  return Number(n.toFixed(precision)).toString();
+}
+
+function superscript(n) {
+  const map = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','+':'⁺'};
+  return String(n).split('').map(c => map[c] || c).join('');
+}
+
+function parseValue(s) {
+  if (typeof s !== 'string') s = String(s);
+  s = s.trim().replace(/\s+/g, '').replace(',', '.');
+  if (s === '') return NaN;
+  s = s.replace(/×10\^?/i, 'e').replace(/\*10\^?/, 'e').replace(/10\^/, '1e');
+  return parseFloat(s);
+}
+
+function formatMoney(n, decimals) {
+  if (!isFinite(n)) return '—';
+  decimals = decimals !== undefined ? decimals : 2;
+  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// ============================================================
+// SETTINGS BAR — shown only where useful
+// ============================================================
+function renderSettings() {
+  const el = document.getElementById('settings');
+  // No settings needed for currency or chemistry — they have their own conventions
+  if (state.mode === 'currency') { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+
+  // Engineering mode locks notation to engineering by default
+  const showNotation = state.mode !== 'basic';
+
+  el.innerHTML = `
+    <span class="opt">
+      <label for="precision">Precision</label>
+      <input type="number" id="precision" class="precision-input" value="${state.precision}" min="0" max="12">
+      <span style="color:var(--ink-mute);">decimals</span>
+    </span>
+    ${showNotation ? `
+      <span class="opt">
+        <label for="notation">Notation</label>
+        <select id="notation" style="width:auto; font-size:11px; padding:4px 24px 4px 8px;">
+          <option value="auto" ${state.notation==='auto'?'selected':''}>Auto</option>
+          <option value="decimal" ${state.notation==='decimal'?'selected':''}>Decimal</option>
+          <option value="scientific" ${state.notation==='scientific'?'selected':''}>Scientific (e)</option>
+          <option value="engineering" ${state.notation==='engineering'?'selected':''}>Engineering (10³)</option>
+        </select>
+      </span>
+    ` : ''}
+    <span class="opt" style="margin-left:auto;color:var(--ink-mute);">
+      ${state.mode === 'basic'    ? 'Mode: clean result only' : ''}
+      ${state.mode === 'scientific' ? 'Mode: step-by-step + formulas + SI base' : ''}
+      ${state.mode === 'engineering' ? 'Mode: scientific notation enforced' : ''}
+      ${state.mode === 'physics'  ? 'Mode: solve for any variable' : ''}
+      ${state.mode === 'chemistry' ? 'Mode: chemistry calculations' : ''}
+    </span>
+  `;
+
+  const p = document.getElementById('precision');
+  if (p) p.addEventListener('input', e => { state.precision = parseInt(e.target.value) || 0; renderMode(); });
+  const n = document.getElementById('notation');
+  if (n) n.addEventListener('change', e => { state.notation = e.target.value; renderMode(); });
+}
+
+// ============================================================
+// MODE DISPATCH
+// ============================================================
+function renderMode() {
+  renderSettings();
+  const root = document.getElementById('mode-content');
+
+  // Engineering forces engineering notation unless user overrode
+  if (state.mode === 'engineering' && state.notation === 'auto') {
+    // we don't mutate state.notation, but interpret in formatter via mode check
+    // Actually let's set it once when entering the mode
+  }
+
+  switch (state.mode) {
+    case 'basic':       renderConverter(root, 'basic'); break;
+    case 'scientific':  renderConverter(root, 'scientific'); break;
+    case 'engineering': renderConverter(root, 'engineering'); break;
+    case 'physics':     renderPhysics(root); break;
+    case 'chemistry':   renderChemistry(root); break;
+    case 'currency':    renderCurrency(root); break;
+  }
+}
+
+// ============================================================
+// CONVERTER — Basic / Scientific / Engineering all share inputs
+// but differ markedly in the output panel
+// ============================================================
+function renderConverter(root, variant) {
+  let cats = Object.keys(UNITS);
+  if (variant === 'engineering') {
+    cats = ['length','mass','pressure','force','energy','power','frequency','voltage','current','resistance','data','time','area'];
+  }
+  if (!cats.includes(state.category)) state.category = cats[0];
+
+  const cat = UNITS[state.category];
+  const unitKeys = Object.keys(cat.units);
+  if (!unitKeys.includes(state.fromUnit)) state.fromUnit = unitKeys[0];
+  if (!unitKeys.includes(state.toUnit)) state.toUnit = unitKeys[1] || unitKeys[0];
+
+  const val = parseValue(state.value);
+  const conv = isNaN(val) ? null : convert(val, state.fromUnit, state.toUnit, state.category);
+
+  root.innerHTML = `
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="id">A.</span> Input</span>
+          <span>${cat.label} · dim ${cat.dim}</span>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Category</label>
+            <div class="quick-units">
+              ${cats.map(c => `<button class="chip ${c===state.category?'active':''}" data-cat="${c}">${UNITS[c].label}</button>`).join('')}
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Value</label>
+            <input type="text" id="inputValue" class="input-big" value="${escapeHtml(state.value)}" placeholder="enter number — e.g. 1.5e3">
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>From</label>
+              <select id="fromUnit">
+                ${unitKeys.map(u => `<option value="${u}" ${u===state.fromUnit?'selected':''}>${u} — ${cat.units[u].name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>To</label>
+              <select id="toUnit">
+                ${unitKeys.map(u => `<option value="${u}" ${u===state.toUnit?'selected':''}>${u} — ${cat.units[u].name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:16px;">
+            <button class="chip" id="swapBtn" style="font-size:12px; padding:8px 14px;">↔ Swap units</button>
+          </div>
+
+          ${cat.note === 'kb_vs_kib' ? `
+            <div class="info-note">
+              <h5>kB vs KiB · Source of confusion</h5>
+              <p>File sizes, RAM and CD capacity are still given in <code>1 KB = 1024 B</code> (binary). Hard drives, DVDs and Blu-rays follow the SI rule: <code>1 KB = 1000 B</code> (decimal).</p>
+              <p>The IEC introduced binary prefixes in 2000 — <code>kB / MB / GB</code> for decimal (×1000), <code>KiB / MiB / GiB</code> for binary (×1024). Adoption is incomplete.</p>
+              <p>Rule of thumb: in computing usually 1024, in math and storage marketing usually 1000. Pick the right unit here.</p>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="id">B.</span> Readout</span>
+          <span>${variant.toUpperCase()}</span>
+        </div>
+        <div class="panel-body">
+          ${renderReadout(conv, val, variant)}
+        </div>
+      </div>
+    </div>
+  `;
+
+  attachConverterListeners();
+}
+
+function renderReadout(conv, inputVal, variant) {
+  if (isNaN(inputVal)) {
+    return `<div class="readout"><div class="label-line">— · Awaiting input</div><div class="result-val">—</div></div>`;
+  }
+  if (!conv) return `<div class="readout"><div class="err">No conversion available.</div></div>`;
+  if (conv.err) {
+    return `<div class="readout"><div class="label-line">Error</div><div class="err">${conv.err}</div></div>`;
+  }
+
+  const cat = UNITS[state.category];
+
+  // Format result according to variant
+  let resultStr;
+  if (variant === 'engineering') {
+    // Force scientific or engineering notation regardless of size
+    const useNotation = (state.notation === 'auto') ? 'engineering' : state.notation;
+    resultStr = formatNumber(conv.result, state.precision, useNotation);
+  } else {
+    resultStr = formatNumber(conv.result);
+  }
+
+  let html = `<div class="readout">
+    <div class="label-line">Result · ${cat.label}</div>
+    <div class="result-val">${resultStr}<span class="result-unit"> ${state.toUnit}</span></div>
+    <div class="sub">${formatNumber(inputVal)} ${state.fromUnit} = ${resultStr} ${state.toUnit}</div>`;
+
+  // SCIENTIFIC mode: show equation prominently + SI base
+  if (variant === 'scientific') {
+    if (!conv.temperature) {
+      html += `<div class="eq-display">${state.toUnit} = ${state.fromUnit} × ${formatNumber(conv.fromFactor / conv.toFactor, 6)}</div>`;
+    }
+  }
+
+  // ENGINEERING mode: show SI base prominently
+  if (variant === 'engineering' && !conv.temperature) {
+    const useNotation = (state.notation === 'auto') ? 'engineering' : state.notation;
+    html += `<div style="margin-top:12px;font-size:12px;color:rgba(232,220,196,0.7);">
+      SI base: <strong style="color:var(--display-fg);">${formatNumber(conv.inBase, state.precision, useNotation)} ${cat.base}</strong>
+    </div>`;
+  }
+
+  html += `</div>`;
+
+  // Steps — only for scientific and engineering
+  if (variant === 'scientific' || variant === 'engineering') {
+    html += renderSteps(conv, inputVal, variant);
+  }
+
+  return html;
+}
+
+function renderSteps(conv, inputVal, variant) {
+  const cat = UNITS[state.category];
+  let html = '<div class="steps"><h4>Conversion breakdown</h4>';
+
+  if (conv.temperature) {
+    const steps = temperatureSteps(conv, variant);
+    steps.forEach((s, i) => {
+      html += `<div class="step"><span class="n">${String(i+1).padStart(2,'0')}</span><span><span class="formula">${s.formula}</span> ${s.note?`<span class="note">${s.note}</span>`:''}</span></div>`;
+    });
+  } else {
+    const useNotation = (variant === 'engineering' && state.notation === 'auto') ? 'engineering' : state.notation;
+    const fmtFactor = (n) => formatNumber(n, 6, 'auto');
+    const fmtVal = (n) => formatNumber(n, state.precision, useNotation);
+
+    html += `<div class="step"><span class="n">01</span><span><span class="formula">Identify: ${state.fromUnit} (${cat.units[state.fromUnit].name}) → ${state.toUnit} (${cat.units[state.toUnit].name})</span></span></div>`;
+    html += `<div class="step"><span class="n">02</span><span><span class="formula">Step to SI base: ${fmtVal(inputVal)} ${state.fromUnit} × ${fmtFactor(conv.fromFactor)} = ${fmtVal(conv.inBase)} ${cat.base}</span></span></div>`;
+    html += `<div class="step"><span class="n">03</span><span><span class="formula">SI base to target: ${fmtVal(conv.inBase)} ${cat.base} ÷ ${fmtFactor(conv.toFactor)} = ${fmtVal(conv.result)} ${state.toUnit}</span></span></div>`;
+
+    if (variant === 'scientific') {
+      html += `<div class="step"><span class="n">04</span><span><span class="formula">Direct factor: ${state.fromUnit} → ${state.toUnit} × ${fmtFactor(conv.fromFactor / conv.toFactor)}</span></span></div>`;
+      html += `<div class="step"><span class="n">05</span><span><span class="formula">Dimensional analysis: [${cat.dim}]</span> <span class="note">dimensions preserved</span></span></div>`;
+    }
+    if (variant === 'engineering') {
+      html += `<div class="step"><span class="n">04</span><span><span class="formula">Precision: ${state.precision} significant decimals</span></span></div>`;
+      html += `<div class="step"><span class="n">05</span><span><span class="formula">Dimensions: [${cat.dim}] · SI base unit: ${cat.base}</span></span></div>`;
+    }
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function temperatureSteps(conv, variant) {
+  const v = conv.inputVal, f = conv.fromUnit, t = conv.toUnit;
+  const steps = [];
+  let kelvin;
+  if (f === '°C') { kelvin = v + 273.15; steps.push({formula: `K = °C + 273.15 = ${formatNumber(v)} + 273.15 = ${formatNumber(kelvin)} K`, note: 'to Kelvin'}); }
+  else if (f === '°F') { kelvin = (v-32)*5/9 + 273.15; steps.push({formula: `K = (°F − 32) × 5/9 + 273.15 = (${formatNumber(v)} − 32) × 5/9 + 273.15 = ${formatNumber(kelvin)} K`, note: 'to Kelvin'}); }
+  else if (f === '°R') { kelvin = v*5/9; steps.push({formula: `K = °R × 5/9 = ${formatNumber(v)} × 5/9 = ${formatNumber(kelvin)} K`, note: 'to Kelvin'}); }
+  else { kelvin = v; steps.push({formula: `K = ${formatNumber(v)} K`, note: 'already Kelvin'}); }
+
+  if (t === '°C') steps.push({formula: `°C = K − 273.15 = ${formatNumber(kelvin)} − 273.15 = ${formatNumber(conv.result)} °C`, note: 'from Kelvin'});
+  else if (t === '°F') steps.push({formula: `°F = (K − 273.15) × 9/5 + 32 = ${formatNumber(conv.result)} °F`, note: 'from Kelvin'});
+  else if (t === '°R') steps.push({formula: `°R = K × 9/5 = ${formatNumber(conv.result)} °R`, note: 'from Kelvin'});
+  else steps.push({formula: `K = ${formatNumber(conv.result)} K`, note: 'final'});
+
+  if (variant === 'scientific' || variant === 'engineering') {
+    steps.push({formula: `Note: temperature is an affine (offset) scale — conversions involve an additive constant, not pure multiplication`, note: 'non-linear'});
+  }
+  return steps;
+}
+
+function attachConverterListeners() {
+  document.querySelectorAll('[data-cat]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.category = el.dataset.cat;
+      const u = Object.keys(UNITS[state.category].units);
+      state.fromUnit = u[0]; state.toUnit = u[1] || u[0];
+      renderMode();
+    });
+  });
+  const inputEl = document.getElementById('inputValue');
+  if (inputEl) inputEl.addEventListener('input', e => {
+    state.value = e.target.value;
+    renderMode();
+    const ne = document.getElementById('inputValue');
+    if (ne) { ne.focus(); ne.setSelectionRange(ne.value.length, ne.value.length); }
+  });
+  const fromEl = document.getElementById('fromUnit');
+  if (fromEl) fromEl.addEventListener('change', e => { state.fromUnit = e.target.value; renderMode(); });
+  const toEl = document.getElementById('toUnit');
+  if (toEl) toEl.addEventListener('change', e => { state.toUnit = e.target.value; renderMode(); });
+  const swap = document.getElementById('swapBtn');
+  if (swap) swap.addEventListener('click', () => {
+    [state.fromUnit, state.toUnit] = [state.toUnit, state.fromUnit];
+    renderMode();
+  });
+}
+
+// ============================================================
+// PHYSICS
+// ============================================================
+function renderPhysics(root) {
+  const formulaKeys = Object.keys(FORMULAS);
+  const f = FORMULAS[state.physicsFormula];
+  const solveFor = state.physicsSolveFor;
+
+  f.vars.forEach(v => {
+    if (state.physicsVals[v.k] === undefined) state.physicsVals[v.k] = '';
+    if (state.physicsVals[v.k + '_unit'] === undefined) {
+      if (v.cat) state.physicsVals[v.k + '_unit'] = UNITS[v.cat].base;
+      else state.physicsVals[v.k + '_unit'] = v.unit || '';
+    }
+  });
+
+  const result = computePhysics(f, solveFor);
+
+  root.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <span><span class="id">A.</span> Formula select</span>
+        <span>${formulaKeys.length} equations</span>
+      </div>
+      <div class="panel-body">
+        <div class="formulas">
+          ${formulaKeys.map(k => `
+            <div class="formula-card ${k===state.physicsFormula?'active':''}" data-formula="${k}">
+              <div class="eq">${FORMULAS[k].eq}</div>
+              <div class="name">${FORMULAS[k].name}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-grid" style="margin-top:24px;">
+      <div class="panel">
+        <div class="panel-head"><span><span class="id">B.</span> Variables</span><span>${f.eq}</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Solve for</label>
+            <div class="quick-units">
+              ${f.vars.map(v => `<button class="chip ${v.k===solveFor?'active':''}" data-solve="${v.k}">${v.k} — ${v.label}</button>`).join('')}
+            </div>
+          </div>
+
+          ${f.vars.filter(v => v.k !== solveFor).map(v => `
+            <div class="field">
+              <label>${v.k} · ${v.label}${v.cat?'':` (${v.unit})`}</label>
+              <div class="physics-input-group">
+                <input type="text" data-pvar="${v.k}" value="${escapeHtml(state.physicsVals[v.k] || '')}" placeholder="0">
+                ${v.cat ? `
+                  <select data-punit="${v.k}">
+                    ${Object.keys(UNITS[v.cat].units).map(u => `<option value="${u}" ${u===state.physicsVals[v.k+'_unit']?'selected':''}>${u}</option>`).join('')}
+                  </select>
+                ` : `<span style="display:flex;align-items:center;padding:0 12px;font-family:var(--font-mono);font-size:13px;color:var(--ink-soft);border:1px solid var(--rule);">${v.unit}</span>`}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span><span class="id">C.</span> Solution</span><span>${solveFor}</span></div>
+        <div class="panel-body">
+          ${renderPhysicsResult(f, solveFor, result)}
+        </div>
+      </div>
+    </div>
+  `;
+
+  attachPhysicsListeners();
+}
+
+function computePhysics(f, solveFor) {
+  const siVals = {};
+  for (const v of f.vars) {
+    if (v.k === solveFor) continue;
+    const raw = parseValue(state.physicsVals[v.k]);
+    if (isNaN(raw)) return null;
+    if (v.cat) {
+      const c = UNITS[v.cat];
+      if (c.nonlinear) {
+        const conv = convertTemperature(raw, state.physicsVals[v.k+'_unit'], c.base);
+        if (conv.err) return null;
+        siVals[v.k] = conv.result;
+      } else {
+        const unit = c.units[state.physicsVals[v.k+'_unit']];
+        siVals[v.k] = raw * unit.factor;
+      }
+    } else {
+      siVals[v.k] = raw;
+    }
+  }
+  const args = f.vars.map(v => v.k === solveFor ? 0 : siVals[v.k]);
+  try { return { siValue: f.solve(...args)[solveFor], siVals }; }
+  catch(e) { return null; }
+}
+
+function renderPhysicsResult(f, solveFor, result) {
+  const targetVar = f.vars.find(v => v.k === solveFor);
+  if (!result || !isFinite(result.siValue)) {
+    return `<div class="readout">
+      <div class="label-line">${solveFor} · ${targetVar.label}</div>
+      <div class="result-val">—</div>
+      <div class="sub">Fill in the other variables</div>
+    </div>`;
+  }
+
+  let displayUnit = '', displayValue = result.siValue, displayUnits = [];
+  if (targetVar.cat) {
+    const c = UNITS[targetVar.cat];
+    displayUnits = Object.keys(c.units);
+    displayUnit = state.physicsVals[solveFor+'_unit'] || c.base;
+    if (!displayUnits.includes(displayUnit)) displayUnit = c.base;
+    if (c.nonlinear) {
+      const conv = convertTemperature(result.siValue, c.base, displayUnit);
+      displayValue = conv.result;
+    } else {
+      displayValue = result.siValue / c.units[displayUnit].factor;
+    }
+  } else {
+    displayUnit = targetVar.unit || '';
+  }
+
+  let html = `<div class="readout">
+    <div class="label-line">${solveFor} · ${targetVar.label}</div>
+    <div class="result-val">${formatNumber(displayValue)}<span class="result-unit"> ${displayUnit}</span></div>
+    <div class="sub">SI: ${formatNumber(result.siValue)} ${targetVar.cat ? UNITS[targetVar.cat].base : (targetVar.unit||'')}</div>
+  </div>`;
+
+  if (displayUnits.length > 1) {
+    html += `<div class="quick-units" style="margin-top:12px;">
+      ${displayUnits.map(u => `<button class="chip ${u===displayUnit?'active':''}" data-physics-out="${u}">${u}</button>`).join('')}
+    </div>`;
+  }
+
+  // Always show solution path in physics — it's the point of the mode
+  html += `<div class="steps"><h4>Solution path</h4>`;
+  html += `<div class="step"><span class="n">01</span><span><span class="formula">Formula: <strong>${f.eq}</strong></span></span></div>`;
+  html += `<div class="step"><span class="n">02</span><span><span class="formula">Solve for ${solveFor}</span></span></div>`;
+  let stepN = 3;
+  for (const v of f.vars) {
+    if (v.k === solveFor) continue;
+    const raw = parseValue(state.physicsVals[v.k]);
+    const si = result.siVals[v.k];
+    const baseU = v.cat ? UNITS[v.cat].base : (v.unit||'');
+    const inU = v.cat ? state.physicsVals[v.k+'_unit'] : (v.unit||'');
+    if (inU !== baseU && v.cat) {
+      html += `<div class="step"><span class="n">${String(stepN++).padStart(2,'0')}</span><span><span class="formula">${v.k} = ${formatNumber(raw)} ${inU} → ${formatNumber(si)} ${baseU}</span> <span class="note">SI conversion</span></span></div>`;
+    }
+  }
+  html += `<div class="step"><span class="n">${String(stepN++).padStart(2,'0')}</span><span><span class="formula">Result (SI): ${solveFor} = ${formatNumber(result.siValue)} ${targetVar.cat?UNITS[targetVar.cat].base:(targetVar.unit||'')}</span></span></div>`;
+  if (targetVar.cat && displayUnit !== UNITS[targetVar.cat].base) {
+    html += `<div class="step"><span class="n">${String(stepN++).padStart(2,'0')}</span><span><span class="formula">Convert to ${displayUnit}: ${formatNumber(displayValue)} ${displayUnit}</span></span></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function attachPhysicsListeners() {
+  document.querySelectorAll('[data-formula]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.physicsFormula = el.dataset.formula;
+      const f = FORMULAS[state.physicsFormula];
+      const sv = f.vars.find(v => v.solveFor) || f.vars[0];
+      state.physicsSolveFor = sv.k;
+      state.physicsVals = {};
+      renderMode();
+    });
+  });
+  document.querySelectorAll('[data-solve]').forEach(el => {
+    el.addEventListener('click', () => { state.physicsSolveFor = el.dataset.solve; renderMode(); });
+  });
+  document.querySelectorAll('[data-pvar]').forEach(el => {
+    el.addEventListener('input', e => {
+      state.physicsVals[el.dataset.pvar] = e.target.value;
+      renderMode();
+      const ne = document.querySelector(`[data-pvar="${el.dataset.pvar}"]`);
+      if (ne) { ne.focus(); ne.setSelectionRange(ne.value.length, ne.value.length); }
+    });
+  });
+  document.querySelectorAll('[data-punit]').forEach(el => {
+    el.addEventListener('change', e => {
+      state.physicsVals[el.dataset.punit + '_unit'] = e.target.value;
+      renderMode();
+    });
+  });
+  document.querySelectorAll('[data-physics-out]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.physicsVals[state.physicsSolveFor + '_unit'] = el.dataset.physicsOut;
+      renderMode();
+    });
+  });
+}
+
+// ============================================================
+// CHEMISTRY
+// ============================================================
+function renderChemistry(root) {
+  const c = state.chem;
+  root.innerHTML = `
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><span><span class="id">A.</span> Chemistry tools</span><span>${c.mode === 'mol_g' ? 'Moles ↔ grams' : c.mode === 'conc' ? 'Concentration' : 'Density'}</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Tool</label>
+            <div class="quick-units">
+              <button class="chip ${c.mode==='mol_g'?'active':''}" data-chem="mol_g">Mol ↔ g</button>
+              <button class="chip ${c.mode==='conc'?'active':''}" data-chem="conc">Concentration (mol/L)</button>
+              <button class="chip ${c.mode==='density'?'active':''}" data-chem="density">Density</button>
+            </div>
+          </div>
+          ${c.mode === 'mol_g' ? `
+            <div class="field">
+              <label>Molar mass M (g/mol)</label>
+              <input type="text" data-chem-input="mass" value="${escapeHtml(c.mass)}" placeholder="e.g. 18.015 for H₂O">
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Moles (n)</label><input type="text" data-chem-input="mol" value="${escapeHtml(c.mol)}"></div>
+              <div class="field"><label>Mass (g)</label><input type="text" data-chem-input="grams" value="${escapeHtml(c.grams)}" placeholder="auto"></div>
+            </div>
+            <p style="font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);margin-top:8px;">Fill <em>one</em> of n or m. The other is calculated.</p>
+          ` : c.mode === 'conc' ? `
+            <div class="field"><label>Moles of solute (mol)</label><input type="text" data-chem-input="mol" value="${escapeHtml(c.mol)}"></div>
+            <div class="field"><label>Solution volume (L)</label><input type="text" data-chem-input="volume" value="${escapeHtml(c.volume)}"></div>
+          ` : `
+            <div class="field"><label>Density (g/cm³)</label><input type="text" data-chem-input="density_g_cm3" value="${escapeHtml(c.density_g_cm3)}"></div>
+          `}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span><span class="id">B.</span> Readout</span><span>CHEM</span></div>
+        <div class="panel-body">${renderChemistryResult(c)}</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:24px;">
+      <div class="panel-head"><span><span class="id">C.</span> Common molar masses</span><span>g/mol</span></div>
+      <div class="panel-body">
+        <div class="quick-units">
+          ${[['H₂O', 18.015],['CO₂', 44.01],['NaCl', 58.44],['NH₃', 17.031],['C₆H₁₂O₆ (glucose)', 180.156],['CH₄', 16.043],['H₂SO₄', 98.079],['O₂', 31.998],['N₂', 28.014],['Fe', 55.845]].map(
+            ([n,m]) => `<button class="chip" data-molarmass="${m}">${n} · ${m}</button>`
+          ).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  attachChemistryListeners();
+}
+
+function renderChemistryResult(c) {
+  if (c.mode === 'mol_g') {
+    const M = parseValue(c.mass), n = parseValue(c.mol), m = parseValue(c.grams);
+    if (isNaN(M) || M <= 0) return `<div class="readout"><div class="label-line">Molar mass required</div><div class="result-val">—</div></div>`;
+    let resultLine, eq;
+    if (!isNaN(n) && isNaN(m))      { const mass = n*M; resultLine = `<div class="result-val">${formatNumber(mass)}<span class="result-unit"> g</span></div>`; eq = `m = n · M = ${formatNumber(n)} × ${formatNumber(M)} = ${formatNumber(mass)} g`; }
+    else if (!isNaN(m) && isNaN(n)) { const mol = m/M;  resultLine = `<div class="result-val">${formatNumber(mol)}<span class="result-unit"> mol</span></div>`; eq = `n = m / M = ${formatNumber(m)} / ${formatNumber(M)} = ${formatNumber(mol)} mol`; }
+    else if (!isNaN(n) && !isNaN(m)){ const cM = m/n; resultLine = `<div class="result-val">${formatNumber(cM)}<span class="result-unit"> g/mol</span></div>`; eq = `M = m / n = ${formatNumber(m)} / ${formatNumber(n)} = ${formatNumber(cM)} g/mol`; }
+    else return `<div class="readout"><div class="label-line">Enter n or m</div><div class="result-val">—</div></div>`;
+    return `<div class="readout"><div class="label-line">n · M ↔ m</div>${resultLine}<div class="sub">${eq}</div></div>
+      <div class="steps"><h4>Formula</h4>
+        <div class="step"><span class="n">01</span><span><span class="formula">n · M = m  &nbsp;⟹&nbsp; n = m/M  &nbsp;|  m = n·M</span></span></div>
+        <div class="step"><span class="n">02</span><span><span class="formula">${eq}</span></span></div></div>`;
+  }
+  if (c.mode === 'conc') {
+    const n = parseValue(c.mol), V = parseValue(c.volume);
+    if (isNaN(n) || isNaN(V) || V <= 0) return `<div class="readout"><div class="label-line">Enter values</div><div class="result-val">—</div></div>`;
+    const conc = n/V;
+    return `<div class="readout"><div class="label-line">Molar concentration c</div><div class="result-val">${formatNumber(conc)}<span class="result-unit"> mol/L (M)</span></div><div class="sub">c = n / V = ${formatNumber(n)} / ${formatNumber(V)}</div></div>
+      <div class="steps"><h4>Formula</h4><div class="step"><span class="n">01</span><span><span class="formula">c = n / V — moles of solute per liter of solution</span></span></div></div>`;
+  }
+  if (c.mode === 'density') {
+    const d = parseValue(c.density_g_cm3);
+    if (isNaN(d)) return `<div class="readout"><div class="label-line">Enter density</div><div class="result-val">—</div></div>`;
+    const kg_m3 = d * 1000;
+    return `<div class="readout"><div class="label-line">Density conversions</div><div class="result-val">${formatNumber(kg_m3)}<span class="result-unit"> kg/m³</span></div><div class="sub">${formatNumber(d)} g/cm³ = ${formatNumber(kg_m3)} kg/m³ = ${formatNumber(d)} kg/L</div></div>
+      <div class="steps"><h4>Breakdown</h4>
+        <div class="step"><span class="n">01</span><span><span class="formula">1 g/cm³ = 1000 kg/m³ = 1 kg/L</span></span></div>
+        <div class="step"><span class="n">02</span><span><span class="formula">${formatNumber(d)} g/cm³ × 1000 = ${formatNumber(kg_m3)} kg/m³</span></span></div></div>`;
+  }
+}
+
+function attachChemistryListeners() {
+  document.querySelectorAll('[data-chem]').forEach(el => {
+    el.addEventListener('click', () => { state.chem.mode = el.dataset.chem; renderMode(); });
+  });
+  document.querySelectorAll('[data-chem-input]').forEach(el => {
+    el.addEventListener('input', e => {
+      state.chem[el.dataset.chemInput] = e.target.value;
+      if (el.dataset.chemInput === 'mol') state.chem.grams = '';
+      if (el.dataset.chemInput === 'grams') state.chem.mol = '';
+      renderMode();
+      const ne = document.querySelector(`[data-chem-input="${el.dataset.chemInput}"]`);
+      if (ne) { ne.focus(); ne.setSelectionRange(ne.value.length, ne.value.length); }
+    });
+  });
+  document.querySelectorAll('[data-molarmass]').forEach(el => {
+    el.addEventListener('click', () => { state.chem.mass = el.dataset.molarmass; renderMode(); });
+  });
+}
+
+// ============================================================
+// CURRENCY — trading terminal style
+// ============================================================
+async function renderCurrency(root) {
+  if (!state.fxRates) await fetchRates();
+  const rates = state.fxRates || {};
+  const currencies = Object.keys(rates).sort();
+
+  if (!currencies.includes(state.fxFrom)) state.fxFrom = 'USD';
+  if (!currencies.includes(state.fxTo))   state.fxTo   = 'EUR';
+
+  const val = parseValue(state.fxValue);
+  let result = null, rateFromTo = null;
+  if (!isNaN(val) && rates[state.fxFrom] && rates[state.fxTo]) {
+    const inUSD = val / rates[state.fxFrom];
+    result = inUSD * rates[state.fxTo];
+    rateFromTo = rates[state.fxTo] / rates[state.fxFrom];
+  }
+
+  const fromMeta = fxMeta(state.fxFrom);
+  const toMeta = fxMeta(state.fxTo);
+
+  // Popular pairs computed from current USD rate
+  const popularCurrencies = ['EUR','GBP','JPY','CHF','CAD','AUD','CNY','INR'];
+
+  root.innerHTML = `
+    <div class="fx-panel">
+      <div class="fx-head">
+        <span class="live">${state.fxOffline ? '◯ Offline' : '● Live'}</span>
+        <span>Foreign Exchange · base USD${state.fxTimestamp ? ' · ' + new Date(state.fxTimestamp*1000).toLocaleDateString() : ''}</span>
+        <button class="refresh-btn" id="fxRefresh">↻ Refresh</button>
+      </div>
+      <div class="fx-body">
+        <div class="fx-converter">
+          <div class="fx-side">
+            <div class="fx-side-label">You send</div>
+            <div class="fx-currency-pick" data-fxpick="from">
+              <span class="fx-flag">${fromMeta.flag}</span>
+              <span class="fx-code-name">
+                <span class="fx-code">${state.fxFrom}</span>
+                <span class="fx-cname">${fromMeta.name} · ${fromMeta.country}</span>
+              </span>
+              <span style="color:rgba(232,220,196,0.4);font-size:14px;">▾</span>
+            </div>
+            <input type="text" id="fxValue" class="fx-amount-input" value="${escapeHtml(state.fxValue)}" placeholder="0">
+          </div>
+
+          <button class="fx-swap" id="fxSwap" title="Swap currencies">⇄</button>
+
+          <div class="fx-side">
+            <div class="fx-side-label">They receive</div>
+            <div class="fx-currency-pick" data-fxpick="to">
+              <span class="fx-flag">${toMeta.flag}</span>
+              <span class="fx-code-name">
+                <span class="fx-code">${state.fxTo}</span>
+                <span class="fx-cname">${toMeta.name} · ${toMeta.country}</span>
+              </span>
+              <span style="color:rgba(232,220,196,0.4);font-size:14px;">▾</span>
+            </div>
+            <div class="fx-result-val">${result === null ? '—' : formatMoney(result, 2)}</div>
+          </div>
+        </div>
+
+        ${result !== null ? `
+          <div class="fx-rate-line">
+            1 ${state.fxFrom} = <strong>${formatMoney(rateFromTo, 4)} ${state.fxTo}</strong>
+            &nbsp;·&nbsp;
+            1 ${state.fxTo} = <strong>${formatMoney(1/rateFromTo, 4)} ${state.fxFrom}</strong>
+          </div>
+        ` : ''}
+
+        <div style="margin-top:24px;">
+          <div class="fx-section-title">Popular vs ${state.fxFrom}</div>
+          <div class="fx-popular">
+            ${popularCurrencies.filter(c => c !== state.fxFrom && rates[c]).map(c => {
+              const r = rates[c] / rates[state.fxFrom];
+              const meta = fxMeta(c);
+              return `<div class="fx-popular-item" data-fxquick="${c}">
+                <div class="fx-popular-pair">${meta.flag} ${state.fxFrom}/${c}</div>
+                <div class="fx-popular-rate">${formatMoney(r, 4)}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  attachCurrencyListeners();
+}
+
+function renderFxPicker() {
+  const rates = state.fxRates || {};
+  const codes = Object.keys(rates).sort((a,b) => {
+    // sort: known first, then alphabetical
+    const aK = CURRENCY_META[a] ? 0 : 1;
+    const bK = CURRENCY_META[b] ? 0 : 1;
+    if (aK !== bK) return aK - bK;
+    return a.localeCompare(b);
+  });
+  const q = state.fxSearchQuery.trim().toLowerCase();
+  const filtered = q ? codes.filter(c => {
+    const m = fxMeta(c);
+    return c.toLowerCase().includes(q) ||
+           m.name.toLowerCase().includes(q) ||
+           m.country.toLowerCase().includes(q);
+  }) : codes;
+
+  const list = document.getElementById('fxPickerList');
+  const current = state.fxPickerTarget === 'from' ? state.fxFrom : state.fxTo;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="fx-picker-empty">No currency matches "${escapeHtml(q)}"</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => {
+    const m = fxMeta(c);
+    return `<div class="fx-picker-item ${c===current?'selected':''}" data-pickcode="${c}">
+      <span class="pflag">${m.flag}</span>
+      <span class="pcode">${c}</span>
+      <span class="pname">${m.name} · ${m.country}</span>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-pickcode]').forEach(el => {
+    el.addEventListener('click', () => {
+      const code = el.dataset.pickcode;
+      if (state.fxPickerTarget === 'from') {
+        if (code === state.fxTo) state.fxTo = state.fxFrom; // auto-swap if duplicate
+        state.fxFrom = code;
+      } else {
+        if (code === state.fxFrom) state.fxFrom = state.fxTo;
+        state.fxTo = code;
+      }
+      closeFxPicker();
+      renderMode();
+    });
+  });
+}
+
+function openFxPicker(target) {
+  state.fxPickerTarget = target;
+  state.fxSearchQuery = '';
+  const picker = document.getElementById('fxPicker');
+  const search = document.getElementById('fxSearch');
+  search.value = '';
+  picker.classList.add('open');
+  renderFxPicker();
+  setTimeout(() => search.focus(), 50);
+}
+
+function closeFxPicker() {
+  document.getElementById('fxPicker').classList.remove('open');
+}
+
+async function fetchRates() {
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    if (!res.ok) throw new Error('FX API unavailable');
+    const data = await res.json();
+    if (data.result === 'success' && data.rates) {
+      state.fxRates = data.rates;
+      state.fxTimestamp = data.time_last_update_unix;
+      state.fxOffline = false;
+      return;
+    }
+    throw new Error('Bad data');
+  } catch(e) {
+    state.fxRates = {
+      USD: 1, EUR: 0.92, CHF: 0.88, GBP: 0.79, JPY: 156.3, CNY: 7.24,
+      CAD: 1.37, AUD: 1.52, NZD: 1.65, SEK: 10.8, NOK: 10.9, DKK: 6.88,
+      INR: 83.5, BRL: 5.45, MXN: 17.1, ZAR: 18.2, RUB: 92.5, KRW: 1370,
+      SGD: 1.35, HKD: 7.82, TRY: 33.2, PLN: 4.0, CZK: 23.1, HUF: 360,
+      THB: 36.5, IDR: 16200, MYR: 4.72, PHP: 58.1, AED: 3.67, SAR: 3.75,
+      TWD: 32.4, ILS: 3.72, EGP: 49.2, RON: 4.58, ISK: 138, UAH: 41.3,
+      VND: 25400, NGN: 1530, KZT: 472, BGN: 1.80
+    };
+    state.fxTimestamp = null;
+    state.fxOffline = true;
+  }
+}
+
+function attachCurrencyListeners() {
+  const v = document.getElementById('fxValue');
+  if (v) v.addEventListener('input', e => {
+    state.fxValue = e.target.value;
+    // Update only the result + rate line for snappier input
+    renderMode();
+    const ne = document.getElementById('fxValue');
+    if (ne) { ne.focus(); ne.setSelectionRange(ne.value.length, ne.value.length); }
+  });
+
+  document.querySelectorAll('[data-fxpick]').forEach(el => {
+    el.addEventListener('click', () => openFxPicker(el.dataset.fxpick));
+  });
+
+  const swap = document.getElementById('fxSwap');
+  if (swap) swap.addEventListener('click', () => {
+    [state.fxFrom, state.fxTo] = [state.fxTo, state.fxFrom];
+    renderMode();
+  });
+
+  const r = document.getElementById('fxRefresh');
+  if (r) r.addEventListener('click', async () => {
+    r.textContent = '↻ Loading...';
+    state.fxRates = null;
+    await fetchRates();
+    renderMode();
+  });
+
+  document.querySelectorAll('[data-fxquick]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.fxTo = el.dataset.fxquick;
+      renderMode();
+    });
+  });
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+function tickClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const el = document.getElementById('clock');
+  if (el) el.textContent = t;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  document.querySelectorAll('.mode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.mode = btn.dataset.mode;
+      // When entering engineering, default the notation to engineering
+      if (state.mode === 'engineering' && state.notation === 'auto') {
+        // leave as 'auto' — the variant logic switches it for display
+      }
+      renderMode();
+    });
+  });
+
+  // FX picker overlay
+  document.getElementById('fxPickerClose').addEventListener('click', closeFxPicker);
+  document.getElementById('fxPicker').addEventListener('click', e => {
+    if (e.target.id === 'fxPicker') closeFxPicker();
+  });
+  document.getElementById('fxSearch').addEventListener('input', e => {
+    state.fxSearchQuery = e.target.value;
+    renderFxPicker();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('fxPicker').classList.contains('open')) closeFxPicker();
+  });
+
+  tickClock();
+  setInterval(tickClock, 1000);
+  renderMode();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

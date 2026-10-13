@@ -547,7 +547,7 @@
         linkedin: 'https://www.linkedin.com/in/andras-marro-5801491a5/',
         defaultTheme: 'graphite', // Start-Theme
         defaultLang: 'en', // Start-Sprache: 'de' oder 'en' (gilt bei jedem Refresh)
-        version: '2.0', // ToolVault Hub-Version
+        version: '3.0', // ToolVault Hub-Version
       };
 
       /* Reihenfolge + Namen der Themes für die Punkte oben rechts.
@@ -603,13 +603,16 @@
          in beiden Sprachen durchsucht – egal in welcher Sprache man tippt. */
       const TOOLS = [
         {
-          name: 'QR-Decoder',
+          name: 'QR Studio',
           desc: {
-            de: 'QR-Codes per Bild oder Kamera dekodieren und analysieren.',
-            en: 'Decode and analyse QR codes from images or the camera.',
+            de: 'QR-Codes gestalten und exportieren – oder per Bild und Kamera lesen.',
+            en: 'Design and export QR codes – or read them from images and the camera.',
           },
-          url: './qr-decoder/qr-decoder.html',
-          tags: ['qr', 'decoder', 'scan', 'camera'],
+          url: './qr/qr.html',
+          tags: {
+            de: ['qr', 'erstellen', 'scannen', 'wlan', 'kamera'],
+            en: ['qr', 'generator', 'scan', 'wifi', 'camera'],
+          },
         },
         {
           name: { de: 'Einheiten-Rechner', en: 'Unit Converter' },
@@ -636,15 +639,39 @@
           },
         },
         {
+          name: { de: 'Video-Konverter', en: 'Video Converter' },
+          desc: {
+            de: 'Videos zu MP4, WebM oder GIF, Ton zu MP3 – kürzen und verkleinern, ohne Upload.',
+            en: 'Video to MP4, WebM or GIF, audio to MP3 – trim and shrink, no upload.',
+          },
+          url: './video/video.html',
+          tags: {
+            de: ['video', 'mp4', 'gif', 'mp3', 'ffmpeg', 'umwandeln'],
+            en: ['video', 'mp4', 'gif', 'mp3', 'ffmpeg', 'convert'],
+          },
+        },
+        {
           name: { de: 'Farb-Konverter', en: 'Color Converter' },
           desc: {
-            de: 'HEX, RGB, HSL, CMYK und OKLCH umrechnen, Kontrast prüfen, Paletten bauen.',
-            en: 'Convert HEX, RGB, HSL, CMYK and OKLCH, check contrast, build palettes.',
+            de: 'Farbrad mit Harmonien, Farbnamen, Verläufe, Kontrast und alle Formate.',
+            en: 'Colour wheel with harmonies, colour names, gradients, contrast and all formats.',
           },
           url: './color/color.html',
           tags: {
-            de: ['farbe', 'hex', 'rgb', 'kontrast', 'design'],
-            en: ['color', 'hex', 'rgb', 'contrast', 'design'],
+            de: ['farbe', 'farbrad', 'hex', 'palette', 'verlauf', 'kontrast'],
+            en: ['color', 'wheel', 'hex', 'palette', 'gradient', 'contrast'],
+          },
+        },
+        {
+          name: { de: 'Farbsehen', en: 'Color Vision' },
+          desc: {
+            de: 'Farben in Fotos oder per Kamera benennen, Farbschwäche simulieren und ausgleichen.',
+            en: 'Name colours in photos or via camera, simulate and compensate colour blindness.',
+          },
+          url: './vision/vision.html',
+          tags: {
+            de: ['farbschwäche', 'farbenblind', 'farbname', 'kamera', 'barrierefrei'],
+            en: ['colour blind', 'cvd', 'color name', 'camera', 'accessibility'],
           },
         },
         {
@@ -711,6 +738,30 @@
           tags: {
             de: ['zeit', 'datum', 'unix', 'zeitzone', 'timestamp'],
             en: ['time', 'date', 'unix', 'timezone', 'timestamp'],
+          },
+        },
+        {
+          name: { de: 'Diff-Checker', en: 'Diff Checker' },
+          desc: {
+            de: 'Zwei Texte zeilen-, wort- oder zeichenweise vergleichen, mit Patch-Export.',
+            en: 'Compare two texts by line, word or character, with patch export.',
+          },
+          url: './diff/diff.html',
+          tags: {
+            de: ['diff', 'vergleichen', 'text', 'unterschied', 'patch'],
+            en: ['diff', 'compare', 'text', 'changes', 'patch'],
+          },
+        },
+        {
+          name: 'Generator',
+          desc: {
+            de: 'UUIDs, ULIDs, Blindtext, Zufallszahlen, Würfel und Auslosen.',
+            en: 'UUIDs, ULIDs, placeholder text, random numbers, dice and draws.',
+          },
+          url: './generator/generator.html',
+          tags: {
+            de: ['uuid', 'lorem', 'zufall', 'würfel', 'auslosen'],
+            en: ['uuid', 'lorem', 'random', 'dice', 'draw'],
           },
         },
       ];

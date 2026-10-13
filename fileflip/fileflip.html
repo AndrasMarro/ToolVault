@@ -229,10 +229,20 @@ footer .privacy-note {
   padding: 6px 12px; background: var(--success-soft);
   color: var(--success); border-radius: 6px;
 }
+
+/* ToolVault: sanfter Seitenwechsel + Link zurück zur Startseite */
+@view-transition { navigation: auto; }
+.tv-back {
+  display: inline-block; margin-bottom: 14px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; letter-spacing: 0.02em;
+  color: var(--text-muted); text-decoration: none; transition: color 0.15s ease;
+}
+.tv-back:hover { color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="container">
+<a class="tv-back" href="../index.html">← ToolVault</a>
 <header>
   <div class="logo">
     <div class="logo-icon">↺</div>

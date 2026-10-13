@@ -762,11 +762,21 @@
     .live-dot, .fx-head .live::before { animation: none; }
     * { transition: none !important; }
   }
+
+/* ToolVault: sanfter Seitenwechsel + Link zurück zur Startseite */
+@view-transition { navigation: auto; }
+.tv-back {
+  display: inline-block; margin-bottom: 14px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em;
+  color: var(--ink-mute); text-decoration: none; transition: color 0.15s ease;
+}
+.tv-back:hover { color: var(--accent); }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+  <a class="tv-back" href="../index.html">← ToolVault</a>
 
   <header>
     <div class="brand">

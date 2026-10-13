@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Convert colours between HEX, RGB, HSL, HSV, CMYK and OKLCH, check WCAG contrast and build palettes — all in the browser."
+    />
+    <title>Color Converter · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <script src="../shared/tv.js"></script>
+
+    <style>
+      .picker-row {
+        display: grid;
+        grid-template-columns: 132px 1fr;
+        gap: 16px;
+        align-items: stretch;
+      }
+      .swatch {
+        position: relative;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        min-height: 132px;
+        overflow: hidden;
+        cursor: pointer;
+        /* Schachbrett für Transparenz */
+        background-color: #fff;
+        background-image:
+          linear-gradient(45deg, #ccc 25%, transparent 25%),
+          linear-gradient(-45deg, #ccc 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #ccc 75%),
+          linear-gradient(-45deg, transparent 75%, #ccc 75%);
+        background-size: 14px 14px;
+        background-position:
+          0 0,
+          0 7px,
+          7px -7px,
+          -7px 0;
+      }
+      .swatch .fill {
+        position: absolute;
+        inset: 0;
+      }
+      .swatch input[type='color'] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .swatch .hint {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.45);
+        color: #fff;
+        pointer-events: none;
+      }
+      .alpha-row {
+        display: grid;
+        grid-template-columns: auto 1fr 3.5em;
+        gap: 10px;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(11, 1fr);
+        gap: 6px;
+      }
+      .palette.harm {
+        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+      }
+      .chip {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 54px;
+        cursor: pointer;
+        display: flex;
+        align-items: flex-end;
+        padding: 5px;
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        transition: transform 0.12s ease;
+      }
+      .chip:hover {
+        transform: translateY(-2px);
+      }
+      .chip.current {
+        outline: 2px solid var(--text);
+        outline-offset: 2px;
+      }
+      .harm-group + .harm-group {
+        margin-top: 14px;
+      }
+      .harm-group .lbl {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .contrast-preview {
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 16px;
+        margin-top: 12px;
+      }
+      .contrast-preview .big {
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .contrast-preview .small {
+        font-size: 0.9rem;
+      }
+      .ratio {
+        font-family: var(--mono);
+        font-size: 2rem;
+        font-weight: 700;
+      }
+      .checks {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 640px) {
+        .picker-row {
+          grid-template-columns: 1fr;
+        }
+        .palette {
+          grid-template-columns: repeat(6, 1fr);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">color</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <!-- Eingabe -->
+      <div class="box">
+        <div class="picker-row">
+          <label class="swatch" id="swatch">
+            <span class="fill" id="swatchFill"></span>
+            <input type="color" id="native" aria-label="Color picker" />
+            <span class="hint" data-i18n="pick"></span>
+          </label>
+          <div class="stack">
+            <label class="field">
+              <span data-i18n="inputLabel"></span>
+              <input type="text" id="input" spellcheck="false" autocomplete="off" value="#e8a23c" />
+            </label>
+            <div class="alpha-row">
+              <span data-i18n="alpha"></span>
+              <input type="range" id="alpha" min="0" max="100" value="100" />
+              <span id="alphaVal">100%</span>
+            </div>
+            <div class="row">
+              <button class="btn sm" id="random" data-i18n="random"></button>
+              <button class="btn sm" id="fromTheme" data-i18n="fromTheme"></button>
+              <span class="msg" id="msg" style="margin: 0"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top: 14px">
+        <!-- Formate -->
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="formats"></span></h2>
+          <div class="kv" id="formats"></div>
+        </div>
+
+        <!-- Kontrast -->
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="contrast"></span></h2>
+          <div class="row">
+            <label class="field" style="flex: 1">
+              <span data-i18n="against"></span>
+              <input type="text" id="bg2" value="#15120f" spellcheck="false" />
+            </label>
+            <button class="btn sm" id="swap" style="align-self: flex-end" data-i18n="swap"></button>
+          </div>
+          <div class="row" style="margin-top: 12px; align-items: baseline">
+            <span class="ratio" id="ratio">–</span>
+            <span class="muted mono" style="font-size: 0.8rem">: 1</span>
+            <span class="spacer"></span>
+            <div class="checks" id="checks"></div>
+          </div>
+          <div class="contrast-preview" id="preview">
+            <div class="big" data-i18n="sampleBig"></div>
+            <div class="small" data-i18n="sampleSmall"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Abstufungen -->
+      <div class="box" style="margin-top: 14px">
+        <h2 class="box-title">
+          <span data-i18n="shades"></span>
+          <button class="btn sm" id="copyScale" data-i18n="copyCss"></button>
+        </h2>
+        <div class="palette" id="scale"></div>
+      </div>
+
+      <!-- Harmonien -->
+      <div class="box">
+        <h2 class="box-title"><span data-i18n="harmonies"></span></h2>
+        <div id="harmonies"></div>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Color Converter v1.0</span
+        ><span>·</span><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script>
+      // #region Texte
+      const STRINGS = {
+        de: {
+          pageTitle: 'Farb-Konverter',
+          kicker: '// farb-konverter',
+          title: 'Farben <span class="accent">umrechnen</span>, prüfen, kombinieren.',
+          lead: 'HEX, RGB, HSL, HSV, CMYK und OKLCH auf einen Blick. Mit WCAG-Kontrastprüfung, Abstufungen und Farbharmonien.',
+          pick: 'klicken zum Wählen',
+          inputLabel: 'Farbe eingeben (HEX, rgb(), hsl(), Name …)',
+          alpha: 'Alpha',
+          random: '⟳ Zufall',
+          fromTheme: '◐ Theme-Akzent',
+          formats: 'Formate',
+          contrast: 'Kontrast (WCAG 2.1)',
+          against: 'Hintergrund / Vergleichsfarbe',
+          swap: '⇄ Tauschen',
+          sampleBig: 'Grosser Text 24px',
+          sampleSmall: 'Normaler Fliesstext – so liest sich die Kombination im Alltag.',
+          shades: 'Abstufungen (hell → dunkel)',
+          harmonies: 'Harmonien',
+          copyCss: 'Als CSS kopieren',
+          invalid: 'Unbekanntes Farbformat',
+          local: 'läuft lokal im Browser',
+          comp: 'Komplementär',
+          analog: 'Analog',
+          triad: 'Triade',
+          tetrad: 'Tetrade',
+          split: 'Split-Komplementär',
+          copy: 'Kopieren',
+        },
+        en: {
+          pageTitle: 'Color Converter',
+          kicker: '// color converter',
+          title: 'Convert, check and <span class="accent">combine</span> colours.',
+          lead: 'HEX, RGB, HSL, HSV, CMYK and OKLCH at a glance. With WCAG contrast checking, shade scales and colour harmonies.',
+          pick: 'click to pick',
+          inputLabel: 'Enter a colour (HEX, rgb(), hsl(), name …)',
+          alpha: 'Alpha',
+          random: '⟳ Random',
+          fromTheme: '◐ Theme accent',
+          formats: 'Formats',
+          contrast: 'Contrast (WCAG 2.1)',
+          against: 'Background / compare colour',
+          swap: '⇄ Swap',
+          sampleBig: 'Large text 24px',
+          sampleSmall: 'Normal body text – this is how the pairing reads day to day.',
+          shades: 'Shades (light → dark)',
+          harmonies: 'Harmonies',
+          copyCss: 'Copy as CSS',
+          invalid: 'Unknown colour format',
+          local: 'runs locally in your browser',
+          comp: 'Complementary',
+          analog: 'Analogous',
+          triad: 'Triadic',
+          tetrad: 'Tetradic',
+          split: 'Split complementary',
+          copy: 'Copy',
+        },
+      };
+      // #endregion
+
+      // #region Farb-Mathe (r,g,b in 0–255, a in 0–1)
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      const round = (v, d = 0) => {
+        const f = 10 ** d;
+        return Math.round(v * f) / f;
+      };
+
+      function rgbToHex({ r, g, b, a = 1 }) {
+        const h = (n) => Math.round(n).toString(16).padStart(2, '0');
+        return '#' + h(r) + h(g) + h(b) + (a < 1 ? h(a * 255) : '');
+      }
+      function rgbToHsl({ r, g, b }) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const max = Math.max(r, g, b),
+          min = Math.min(r, g, b);
+        const l = (max + min) / 2;
+        let h = 0,
+          s = 0;
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+          else if (max === g) h = (b - r) / d + 2;
+          else h = (r - g) / d + 4;
+          h *= 60;
+        }
+        return { h, s: s * 100, l: l * 100 };
+      }
+      function hslToRgb({ h, s, l }) {
+        h = (((h % 360) + 360) % 360) / 360;
+        s /= 100;
+        l /= 100;
+        if (s === 0) return { r: l * 255, g: l * 255, b: l * 255 };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        const hue = (t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1 / 6) return p + (q - p) * 6 * t;
+          if (t < 1 / 2) return q;
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+          return p;
+        };
+        return { r: hue(h + 1 / 3) * 255, g: hue(h) * 255, b: hue(h - 1 / 3) * 255 };
+      }
+      function rgbToHsv({ r, g, b }) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const max = Math.max(r, g, b),
+          min = Math.min(r, g, b),
+          d = max - min;
+        const { h } = rgbToHsl({ r: r * 255, g: g * 255, b: b * 255 });
+        return { h, s: max === 0 ? 0 : (d / max) * 100, v: max * 100 };
+      }
+      function rgbToCmyk({ r, g, b }) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const k = 1 - Math.max(r, g, b);
+        if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
+        return {
+          c: ((1 - r - k) / (1 - k)) * 100,
+          m: ((1 - g - k) / (1 - k)) * 100,
+          y: ((1 - b - k) / (1 - k)) * 100,
+          k: k * 100,
+        };
+      }
+      // sRGB -> OKLab -> OKLCH (Björn Ottosson)
+      function rgbToOklch({ r, g, b }) {
+        const lin = (c) => {
+          c /= 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        const R = lin(r),
+          G = lin(g),
+          B = lin(b);
+        const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+        const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+        const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+        const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+        const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+        const Bk = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+        const C = Math.sqrt(A * A + Bk * Bk);
+        let H = (Math.atan2(Bk, A) * 180) / Math.PI;
+        if (H < 0) H += 360;
+        return { l: L * 100, c: C, h: C < 0.0001 ? 0 : H };
+      }
+      function luminance({ r, g, b }) {
+        const ch = (c) => {
+          c /= 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+      }
+      function contrast(a, b) {
+        const la = luminance(a),
+          lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+      }
+      // Halbtransparente Farbe auf Hintergrund mischen (für Kontrast)
+      const over = (fg, bg) => ({
+        r: fg.r * fg.a + bg.r * (1 - fg.a),
+        g: fg.g * fg.a + bg.g * (1 - fg.a),
+        b: fg.b * fg.a + bg.b * (1 - fg.a),
+        a: 1,
+      });
+      // #endregion
+
+      // #region Parser — eigene Regeln + Canvas als Fallback (Namen, hwb(), lab() …)
+      const ctx = document.createElement('canvas').getContext('2d');
+      const num = (s, max) => {
+        s = s.trim();
+        if (s.endsWith('%')) return (parseFloat(s) / 100) * max;
+        return parseFloat(s);
+      };
+
+      function parse(input) {
+        let s = String(input).trim().toLowerCase();
+        if (!s) return null;
+
+        // HEX (mit oder ohne #)
+        let m = s.match(/^#?([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/);
+        if (m) {
+          let h = m[1];
+          if (h.length <= 4) h = [...h].map((c) => c + c).join('');
+          return {
+            r: parseInt(h.slice(0, 2), 16),
+            g: parseInt(h.slice(2, 4), 16),
+            b: parseInt(h.slice(4, 6), 16),
+            a: h.length === 8 ? round(parseInt(h.slice(6, 8), 16) / 255, 3) : 1,
+          };
+        }
+
+        // Funktionen: rgb(), hsl(), hsv(), cmyk() — Komma oder Leerzeichen, optional / alpha
+        m = s.match(/^(rgba?|hsla?|hsv|hsb|cmyk)\s*\(([^)]*)\)$/);
+        if (m) {
+          const fn = m[1];
+          const parts = m[2].split(/[\s,\/]+/).filter(Boolean);
+          const alpha = (i) => (parts[i] !== undefined ? clamp(num(parts[i], 1), 0, 1) : 1);
+          if (fn.startsWith('rgb') && parts.length >= 3) {
+            const [r, g, b] = parts.slice(0, 3).map((p) => clamp(num(p, 255), 0, 255));
+            return { r, g, b, a: alpha(3) };
+          }
+          if (fn.startsWith('hsl') && parts.length >= 3) {
+            const h = parseFloat(parts[0]);
+            const sat = clamp(parseFloat(parts[1]), 0, 100);
+            const l = clamp(parseFloat(parts[2]), 0, 100);
+            return { ...hslToRgb({ h, s: sat, l }), a: alpha(3) };
+          }
+          if ((fn === 'hsv' || fn === 'hsb') && parts.length >= 3) {
+            const h = parseFloat(parts[0]);
+            const sv = clamp(parseFloat(parts[1]), 0, 100) / 100;
+            const v = clamp(parseFloat(parts[2]), 0, 100) / 100;
+            const l = v * (1 - sv / 2);
+            const sl = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
+            return { ...hslToRgb({ h, s: sl * 100, l: l * 100 }), a: alpha(3) };
+          }
+          if (fn === 'cmyk' && parts.length >= 4) {
+            const [c, mm, y, k] = parts.map((p) => clamp(parseFloat(p), 0, 100) / 100);
+            return {
+              r: 255 * (1 - c) * (1 - k),
+              g: 255 * (1 - mm) * (1 - k),
+              b: 255 * (1 - y) * (1 - k),
+              a: 1,
+            };
+          }
+        }
+
+        // Fallback: Browser parsen lassen (CSS-Namen, hwb(), lab(), oklch() …)
+        ctx.fillStyle = '#010203';
+        ctx.fillStyle = s;
+        const out = ctx.fillStyle;
+        if (out === '#010203' && s.replace(/\s/g, '') !== '#010203') return null;
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillRect(0, 0, 1, 1);
+        const d = ctx.getImageData(0, 0, 1, 1).data;
+        return { r: d[0], g: d[1], b: d[2], a: round(d[3] / 255, 3) };
+      }
+      // #endregion
+
+      // #region UI
+      const { $, t, esc, copy } = TV;
+      const input = $('#input');
+      const alphaEl = $('#alpha');
+      let color = { r: 232, g: 162, b: 60, a: 1 };
+
+      const css = {
+        hex: (c) => rgbToHex(c).toUpperCase(),
+        rgb: (c) =>
+          c.a < 1
+            ? `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${round(c.a, 2)})`
+            : `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`,
+        hsl: (c) => {
+          const h = rgbToHsl(c);
+          const body = `${round(h.h)}, ${round(h.s)}%, ${round(h.l)}%`;
+          return c.a < 1 ? `hsla(${body}, ${round(c.a, 2)})` : `hsl(${body})`;
+        },
+        hsv: (c) => {
+          const h = rgbToHsv(c);
+          return `hsv(${round(h.h)}, ${round(h.s)}%, ${round(h.v)}%)`;
+        },
+        cmyk: (c) => {
+          const k = rgbToCmyk(c);
+          return `cmyk(${round(k.c)}%, ${round(k.m)}%, ${round(k.y)}%, ${round(k.k)}%)`;
+        },
+        oklch: (c) => {
+          const o = rgbToOklch(c);
+          return `oklch(${round(o.l, 1)}% ${round(o.c, 3)} ${round(o.h, 1)}${c.a < 1 ? ' / ' + round(c.a, 2) : ''})`;
+        },
+      };
+
+      function renderFormats() {
+        const wrap = $('#formats');
+        wrap.innerHTML = '';
+        Object.entries(css).forEach(([k, fn]) => {
+          const val = fn(color);
+          const kEl = document.createElement('span');
+          kEl.className = 'k';
+          kEl.textContent = k;
+          const vEl = document.createElement('span');
+          vEl.className = 'v';
+          vEl.textContent = val;
+          const b = document.createElement('button');
+          b.className = 'btn sm';
+          b.textContent = t('copy');
+          b.addEventListener('click', () => copy(val, k.toUpperCase()));
+          wrap.append(kEl, vEl, b);
+        });
+      }
+
+      function renderContrast() {
+        const bg = parse($('#bg2').value);
+        $('#bg2').classList.toggle('is-bad', !bg);
+        if (!bg) return;
+        const bgSolid = { ...bg, a: 1 };
+        const fg = over(color, bgSolid);
+        const r = contrast(fg, bgSolid);
+        $('#ratio').textContent = r.toFixed(2);
+        const checks = [
+          ['AA', 4.5],
+          ['AA large', 3],
+          ['AAA', 7],
+          ['AAA large', 4.5],
+        ];
+        $('#checks').innerHTML = checks
+          .map(
+            ([n, min]) => `<span class="pill ${r >= min ? 'ok' : 'bad'}">${r >= min ? '✓' : '✕'} ${n}</span>`,
+          )
+          .join('');
+        const p = $('#preview');
+        p.style.background = rgbToHex(bgSolid);
+        p.style.color = css.rgb(color);
+      }
+
+      function chip(c, opts = {}) {
+        const el = document.createElement('button');
+        el.className = 'chip' + (opts.current ? ' current' : '');
+        const hex = rgbToHex({ ...c, a: 1 }).toUpperCase();
+        el.style.background = hex;
+        el.style.color = luminance(c) > 0.45 ? '#111' : '#fff';
+        el.textContent = hex;
+        el.title = hex;
+        el.addEventListener('click', () => setColor({ ...c, a: color.a }, true));
+        return el;
+      }
+
+      function scaleColors() {
+        const h = rgbToHsl(color);
+        const steps = [97, 93, 85, 74, 62, 50, 40, 31, 23, 16, 10];
+        return steps.map((l) => hslToRgb({ h: h.h, s: h.s, l }));
+      }
+
+      function renderScale() {
+        const box = $('#scale');
+        box.innerHTML = '';
+        const own = rgbToHex({ ...color, a: 1 });
+        scaleColors().forEach((c) => box.appendChild(chip(c, { current: rgbToHex(c) === own })));
+      }
+
+      function renderHarmonies() {
+        const h = rgbToHsl(color);
+        const rot = (deg) => hslToRgb({ h: h.h + deg, s: h.s, l: h.l });
+        const groups = [
+          ['comp', [0, 180]],
+          ['analog', [-30, 0, 30]],
+          ['triad', [0, 120, 240]],
+          ['split', [0, 150, 210]],
+          ['tetrad', [0, 90, 180, 270]],
+        ];
+        const box = $('#harmonies');
+        box.innerHTML = '';
+        groups.forEach(([key, degs]) => {
+          const g = document.createElement('div');
+          g.className = 'harm-group';
+          g.innerHTML = `<div class="lbl">${esc(t(key))}</div>`;
+          const row = document.createElement('div');
+          row.className = 'palette harm';
+          degs.forEach((d) => row.appendChild(chip(rot(d), { current: d === 0 })));
+          g.appendChild(row);
+          box.appendChild(g);
+        });
+      }
+
+      function render() {
+        $('#swatchFill').style.background = css.rgb(color);
+        $('#native').value = rgbToHex({ ...color, a: 1 });
+        alphaEl.value = Math.round(color.a * 100);
+        $('#alphaVal').textContent = Math.round(color.a * 100) + '%';
+        renderFormats();
+        renderContrast();
+        renderScale();
+        renderHarmonies();
+        try {
+          history.replaceState(null, '', '#' + rgbToHex(color).slice(1));
+        } catch (e) {}
+      }
+
+      function setColor(c, writeInput) {
+        color = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+        if (writeInput) input.value = css.hex(color);
+        input.classList.remove('is-bad');
+        $('#msg').textContent = '';
+        render();
+      }
+
+      input.addEventListener('input', () => {
+        const c = parse(input.value);
+        if (!c) {
+          input.classList.add('is-bad');
+          $('#msg').className = 'msg bad';
+          $('#msg').textContent = t('invalid');
+          return;
+        }
+        setColor(c, false);
+      });
+      $('#native').addEventListener('input', (e) => setColor({ ...parse(e.target.value), a: color.a }, true));
+      alphaEl.addEventListener('input', () => {
+        color.a = alphaEl.value / 100;
+        input.value = css.hex(color);
+        render();
+      });
+      $('#bg2').addEventListener('input', renderContrast);
+      $('#swap').addEventListener('click', () => {
+        const bg = parse($('#bg2').value);
+        if (!bg) return;
+        $('#bg2').value = css.hex({ ...color, a: 1 });
+        setColor({ ...bg, a: 1 }, true);
+      });
+      $('#random').addEventListener('click', () => {
+        const rnd = new Uint8Array(3);
+        crypto.getRandomValues(rnd);
+        setColor({ r: rnd[0], g: rnd[1], b: rnd[2], a: 1 }, true);
+      });
+      $('#fromTheme').addEventListener('click', () => {
+        const acc = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+        const c = parse(acc);
+        if (c) setColor(c, true);
+      });
+      $('#copyScale').addEventListener('click', () => {
+        const names = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+        const lines = scaleColors().map((c, i) => `  --color-${names[i]}: ${rgbToHex(c)};`);
+        copy(':root {\n' + lines.join('\n') + '\n}', 'CSS');
+      });
+
+      // Theme-Wechsel -> Kontrast-Hintergrund mitziehen, falls nicht verändert
+      document.addEventListener('tv:theme', () => {
+        const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+        if ($('#bg2').dataset.touched !== '1') {
+          $('#bg2').value = bg;
+          renderContrast();
+        }
+      });
+      $('#bg2').addEventListener('input', () => ($('#bg2').dataset.touched = '1'));
+
+      TV.init({
+        glyph: '#',
+        strings: STRINGS,
+        onLang: () => {
+          renderFormats();
+          renderHarmonies();
+        },
+      });
+
+      // Start: Farbe aus URL-Hash (#ff8800) oder Default
+      const fromHash = parse(location.hash.slice(1));
+      setColor(fromHash || parse(input.value), true);
+      input.focus();
+      // #endregion
+    </script>
+  </body>
+</html>

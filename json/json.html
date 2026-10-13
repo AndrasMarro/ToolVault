@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Format, validate, minify and explore JSON in the browser — with precise error locations, key sorting and a collapsible tree view."
+    />
+    <title>JSON Formatter · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <script src="../shared/tv.js"></script>
+
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .toolbar select {
+        width: auto;
+        padding: 7px 10px;
+        font-size: 0.8rem;
+      }
+      .editor-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .editor-grid .box {
+        margin-top: 0;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #src {
+        min-height: 440px;
+        flex: 1;
+        white-space: pre;
+        overflow: auto;
+        font-size: 0.84rem;
+      }
+      .view {
+        flex: 1;
+        min-height: 440px;
+        max-height: 70vh;
+        overflow: auto;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 10px 12px;
+        font-family: var(--mono);
+        font-size: 0.84rem;
+        line-height: 1.55;
+        white-space: pre;
+        tab-size: 2;
+      }
+      /* Syntax-Farben — leiten sich vom Theme ab */
+      .j-key {
+        color: var(--accent);
+      }
+      .j-str {
+        color: var(--ok);
+      }
+      .j-num {
+        color: #7fb4ff;
+      }
+      .j-bool,
+      .j-null {
+        color: #d68cf0;
+      }
+      [data-theme='paper'] .j-num {
+        color: #2456b8;
+      }
+      [data-theme='paper'] .j-bool,
+      [data-theme='paper'] .j-null {
+        color: #8b2fae;
+      }
+      .j-punc {
+        color: var(--text-muted);
+      }
+      /* Baum */
+      .tree {
+        white-space: normal;
+      }
+      .tree details {
+        margin-left: 14px;
+      }
+      .tree > details {
+        margin-left: 0;
+      }
+      .tree summary {
+        cursor: pointer;
+        list-style: none;
+        border-radius: 4px;
+        padding: 0 3px;
+      }
+      .tree summary::-webkit-details-marker {
+        display: none;
+      }
+      .tree summary::before {
+        content: '▸ ';
+        color: var(--text-muted);
+      }
+      .tree details[open] > summary::before {
+        content: '▾ ';
+      }
+      .tree .leaf {
+        margin-left: 28px;
+        padding: 0 3px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .tree summary:hover,
+      .tree .leaf:hover {
+        background: var(--accent-soft);
+      }
+      .tree .count {
+        color: var(--text-muted);
+        font-size: 0.76rem;
+      }
+      .errline {
+        background: rgba(229, 103, 90, 0.18);
+        outline: 1px solid var(--bad);
+        border-radius: 3px;
+      }
+      .path {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        min-height: 28px;
+        word-break: break-all;
+      }
+      .path code {
+        color: var(--text);
+      }
+      @media (max-width: 760px) {
+        .editor-grid {
+          grid-template-columns: 1fr;
+        }
+        #src,
+        .view {
+          min-height: 260px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">json</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <div class="toolbar">
+        <button class="btn primary" id="fmt" data-i18n="format"></button>
+        <button class="btn" id="min" data-i18n="minify"></button>
+        <button class="btn" id="repair" data-i18n="repair" data-i18n-title="repairHint"></button>
+        <select id="indent" aria-label="Indent">
+          <option value="2">2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+        <label class="check"><input type="checkbox" id="sort" /> <span data-i18n="sortKeys"></span></label>
+        <span class="spacer"></span>
+        <button class="btn sm" id="sample" data-i18n="sample"></button>
+        <label class="btn sm" style="position: relative">
+          <span data-i18n="open"></span>
+          <input
+            type="file"
+            id="file"
+            accept=".json,application/json,text/plain"
+            style="position: absolute; inset: 0; opacity: 0; cursor: pointer"
+          />
+        </label>
+        <button class="btn sm" id="clear" data-i18n="clear"></button>
+      </div>
+
+      <div class="editor-grid">
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="input"></span><span class="pill" id="inSize">0 B</span></h2>
+          <textarea id="src" spellcheck="false" data-i18n-ph="placeholder"></textarea>
+          <div class="msg" id="status"></div>
+        </div>
+        <div class="box">
+          <h2 class="box-title">
+            <span class="seg" role="tablist">
+              <button role="tab" data-view="code" aria-selected="true" data-i18n="code"></button>
+              <button role="tab" data-view="tree" aria-selected="false" data-i18n="tree"></button>
+            </span>
+            <span class="row" style="gap: 6px">
+              <button class="btn sm" id="copyOut" data-i18n="copy"></button>
+              <button class="btn sm" id="dl" data-i18n="download"></button>
+            </span>
+          </h2>
+          <div class="view" id="code"></div>
+          <div class="view tree" id="tree" hidden></div>
+          <div class="path" id="path"></div>
+        </div>
+      </div>
+
+      <div class="box" style="margin-top: 14px">
+        <h2 class="box-title"><span data-i18n="stats"></span></h2>
+        <div class="stats" id="stats"></div>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>JSON Formatter v1.0</span
+        ><span>·</span><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script>
+      const STRINGS = {
+        de: {
+          pageTitle: 'JSON-Formatter',
+          kicker: '// json-formatter',
+          title: 'JSON <span class="accent">prüfen</span> und lesbar machen.',
+          lead: 'Einrücken, minifizieren, Schlüssel sortieren und als Baum erkunden. Fehler werden mit Zeile und Spalte markiert – nichts verlässt deinen Browser.',
+          format: '{ } Formatieren',
+          minify: '⇥ Minifizieren',
+          repair: '✚ Reparieren',
+          repairHint: 'Kommentare, nachgestellte Kommas und einfache Anführungszeichen korrigieren',
+          sortKeys: 'Schlüssel sortieren',
+          sample: 'Beispiel',
+          open: 'Datei öffnen',
+          clear: 'Leeren',
+          input: 'Eingabe',
+          placeholder: 'JSON hier einfügen oder Datei hineinziehen …',
+          code: 'Code',
+          tree: 'Baum',
+          copy: 'Kopieren',
+          download: 'Download',
+          stats: 'Statistik',
+          valid: '✓ Gültiges JSON',
+          invalidAt: (l, c, m) => `✕ Zeile ${l}, Spalte ${c}: ${m}`,
+          invalid: (m) => '✕ ' + m,
+          repaired: 'Repariert – bitte prüfen.',
+          nothingRepair: 'Nichts zu reparieren gefunden.',
+          clickPath: 'Knoten im Baum anklicken, um den Pfad zu sehen.',
+          copyPath: 'Pfad kopieren',
+          s_keys: 'Schlüssel',
+          s_values: 'Werte',
+          s_depth: 'Tiefe',
+          s_arrays: 'Arrays',
+          s_objects: 'Objekte',
+          s_size: 'Grösse formatiert',
+          s_min: 'Grösse minifiziert',
+          local: 'läuft lokal im Browser',
+          items: (n) => n + (n === 1 ? ' Eintrag' : ' Einträge'),
+        },
+        en: {
+          pageTitle: 'JSON Formatter',
+          kicker: '// json formatter',
+          title: 'Validate JSON and make it <span class="accent">readable</span>.',
+          lead: 'Indent, minify, sort keys and explore as a tree. Errors are pinpointed by line and column – nothing leaves your browser.',
+          format: '{ } Format',
+          minify: '⇥ Minify',
+          repair: '✚ Repair',
+          repairHint: 'Fix comments, trailing commas and single quotes',
+          sortKeys: 'Sort keys',
+          sample: 'Sample',
+          open: 'Open file',
+          clear: 'Clear',
+          input: 'Input',
+          placeholder: 'Paste JSON here or drop a file …',
+          code: 'Code',
+          tree: 'Tree',
+          copy: 'Copy',
+          download: 'Download',
+          stats: 'Statistics',
+          valid: '✓ Valid JSON',
+          invalidAt: (l, c, m) => `✕ Line ${l}, column ${c}: ${m}`,
+          invalid: (m) => '✕ ' + m,
+          repaired: 'Repaired – please double-check.',
+          nothingRepair: 'Nothing to repair found.',
+          clickPath: 'Click a node in the tree to see its path.',
+          copyPath: 'Copy path',
+          s_keys: 'Keys',
+          s_values: 'Values',
+          s_depth: 'Depth',
+          s_arrays: 'Arrays',
+          s_objects: 'Objects',
+          s_size: 'Formatted size',
+          s_min: 'Minified size',
+          local: 'runs locally in your browser',
+          items: (n) => n + (n === 1 ? ' item' : ' items'),
+        },
+      };
+
+      const { $, $$, t, esc, copy, download } = TV;
+      const src = $('#src');
+      const status = $('#status');
+      let parsed; // zuletzt gültiger Wert
+      let outText = '';
+      let view = 'code';
+
+      // #region Helfer
+      const bytes = (s) => new Blob([s]).size;
+      const fmtBytes = (n) =>
+        n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
+      const indentVal = () => ($('#indent').value === 'tab' ? '\t' : Number($('#indent').value));
+
+      function sortDeep(v) {
+        if (Array.isArray(v)) return v.map(sortDeep);
+        if (v && typeof v === 'object') {
+          return Object.keys(v)
+            .sort((a, b) => a.localeCompare(b))
+            .reduce((o, k) => ((o[k] = sortDeep(v[k])), o), {});
+        }
+        return v;
+      }
+
+      // Fehlerposition aus der Browser-Meldung holen (Chrome/Firefox/Safari)
+      function errorPos(err, text) {
+        const msg = err.message;
+        let m = msg.match(/line (\d+) column (\d+)/i);
+        if (m) return { line: +m[1], col: +m[2], msg };
+        m = msg.match(/position (\d+)/i);
+        if (m) {
+          const pos = +m[1];
+          const before = text.slice(0, pos).split('\n');
+          return { line: before.length, col: before[before.length - 1].length + 1, msg, pos };
+        }
+        // V8 nennt manchmal nur Token + Ausschnitt: Unexpected token '}', ..."b": tru}" is not valid JSON
+        const tok = msg.match(/Unexpected token '(.+?)'/);
+        const snip = msg.match(/"(?:\.\.\.)?([\s\S]+?)(?:\.\.\.)?" is not valid JSON/);
+        if (tok && snip) {
+          const at = text.indexOf(snip[1]);
+          const off = snip[1].indexOf(tok[1]);
+          if (at >= 0 && off >= 0) {
+            const before = text.slice(0, at + off).split('\n');
+            return { line: before.length, col: before[before.length - 1].length + 1, msg };
+          }
+        }
+        return { msg };
+      }
+
+      // Syntax-Highlighting für bereits formatiertes JSON
+      function highlight(json) {
+        return esc(json).replace(
+          /(&quot;(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],]/g,
+          (m, str, colon, bool) => {
+            if (str) return colon ? `<span class="j-key">${str}</span><span class="j-punc">${colon}</span>` : `<span class="j-str">${str}</span>`;
+            if (bool) return `<span class="j-bool">${m}</span>`;
+            if (m === 'null') return `<span class="j-null">${m}</span>`;
+            if (/^[{}\[\],]$/.test(m)) return `<span class="j-punc">${m}</span>`;
+            return `<span class="j-num">${m}</span>`;
+          },
+        );
+      }
+
+      // Kommentare, nachgestellte Kommas, einfache Anführungszeichen, unquotierte Keys
+      function repair(text) {
+        let out = '';
+        let i = 0;
+        const n = text.length;
+        while (i < n) {
+          const c = text[i];
+          if (c === '"' || c === "'") {
+            const q = c;
+            let s = '';
+            i++;
+            while (i < n && text[i] !== q) {
+              if (text[i] === '\\' && i + 1 < n) {
+                s += text[i] + text[i + 1];
+                i += 2;
+                continue;
+              }
+              if (q === "'" && text[i] === '"') s += '\\"';
+              else if (text[i] === '\n') s += '\\n';
+              else s += text[i];
+              i++;
+            }
+            i++;
+            out += '"' + (q === "'" ? s.replace(/\\'/g, "'") : s) + '"';
+            continue;
+          }
+          if (c === '/' && text[i + 1] === '/') {
+            while (i < n && text[i] !== '\n') i++;
+            continue;
+          }
+          if (c === '/' && text[i + 1] === '*') {
+            i += 2;
+            while (i < n && !(text[i] === '*' && text[i + 1] === '/')) i++;
+            i += 2;
+            continue;
+          }
+          out += c;
+          i++;
+        }
+        return out
+          .replace(/,(\s*[}\]])/g, '$1') // trailing commas
+          .replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3') // unquoted keys
+          .replace(/\bundefined\b/g, 'null');
+      }
+      // #endregion
+
+      // #region Baum
+      function treeNode(key, val, path, open) {
+        const isArr = Array.isArray(val);
+        const keyHtml = key === null ? '' : `<span class="j-key">${esc(key)}</span><span class="j-punc">: </span>`;
+        if (val && typeof val === 'object') {
+          const d = document.createElement('details');
+          if (open) d.open = true;
+          const entries = isArr ? val.map((v, i) => [i, v]) : Object.entries(val);
+          const s = document.createElement('summary');
+          s.dataset.path = path;
+          s.innerHTML =
+            keyHtml +
+            `<span class="j-punc">${isArr ? '[ ]' : '{ }'}</span> <span class="count">${esc(t('items', entries.length))}</span>`;
+          d.appendChild(s);
+          // Grosse Knoten erst beim Öffnen rendern
+          let filled = false;
+          const fill = () => {
+            if (filled) return;
+            filled = true;
+            entries.forEach(([k, v]) => {
+              const p = isArr ? `${path}[${k}]` : /^[A-Za-z_$][\w$]*$/.test(k) ? `${path}.${k}` : `${path}[${JSON.stringify(k)}]`;
+              d.appendChild(treeNode(isArr ? String(k) : k, v, p, false));
+            });
+          };
+          if (open) fill();
+          d.addEventListener('toggle', fill);
+          return d;
+        }
+        const leaf = document.createElement('div');
+        leaf.className = 'leaf';
+        leaf.dataset.path = path;
+        const cls = typeof val === 'string' ? 'j-str' : typeof val === 'number' ? 'j-num' : val === null ? 'j-null' : 'j-bool';
+        leaf.innerHTML = keyHtml + `<span class="${cls}">${esc(JSON.stringify(val))}</span>`;
+        return leaf;
+      }
+
+      function renderTree() {
+        const box = $('#tree');
+        box.innerHTML = '';
+        if (parsed === undefined) return;
+        box.appendChild(treeNode(null, parsed, '$', true));
+      }
+
+      $('#tree').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-path]');
+        if (!el) return;
+        const p = el.dataset.path;
+        $('#path').innerHTML = `<code>${esc(p)}</code>`;
+        const b = document.createElement('button');
+        b.className = 'btn sm';
+        b.textContent = t('copyPath');
+        b.addEventListener('click', () => copy(p));
+        $('#path').appendChild(b);
+      });
+      // #endregion
+
+      // #region Statistik
+      function renderStats() {
+        const box = $('#stats');
+        if (parsed === undefined) {
+          box.innerHTML = '';
+          return;
+        }
+        let keys = 0,
+          values = 0,
+          arrays = 0,
+          objects = 0,
+          depth = 0;
+        const walk = (v, d) => {
+          depth = Math.max(depth, d);
+          if (Array.isArray(v)) {
+            arrays++;
+            v.forEach((x) => walk(x, d + 1));
+          } else if (v && typeof v === 'object') {
+            objects++;
+            Object.entries(v).forEach(([, x]) => {
+              keys++;
+              walk(x, d + 1);
+            });
+          } else values++;
+        };
+        walk(parsed, 0);
+        const items = [
+          [keys, 's_keys'],
+          [values, 's_values'],
+          [objects, 's_objects'],
+          [arrays, 's_arrays'],
+          [depth, 's_depth'],
+          [fmtBytes(bytes(JSON.stringify(parsed, null, 2))), 's_size'],
+          [fmtBytes(bytes(JSON.stringify(parsed))), 's_min'],
+        ];
+        box.innerHTML = items
+          .map(([n, k]) => `<div class="stat"><div class="n">${esc(n)}</div><div class="l">${esc(t(k))}</div></div>`)
+          .join('');
+      }
+      // #endregion
+
+      // #region Ablauf
+      function setOutput(text) {
+        outText = text;
+        $('#code').innerHTML = highlight(text);
+        renderTree();
+        renderStats();
+      }
+
+      function validate() {
+        const text = src.value;
+        $('#inSize').textContent = fmtBytes(bytes(text));
+        if (!text.trim()) {
+          parsed = undefined;
+          status.textContent = '';
+          src.classList.remove('is-bad');
+          setOutput('');
+          return false;
+        }
+        try {
+          parsed = JSON.parse(text);
+          status.className = 'msg ok';
+          status.textContent = t('valid');
+          src.classList.remove('is-bad');
+          return true;
+        } catch (err) {
+          parsed = undefined;
+          const p = errorPos(err, text);
+          status.className = 'msg bad';
+          status.textContent = p.line ? t('invalidAt', p.line, p.col, p.msg) : t('invalid', p.msg);
+          src.classList.add('is-bad');
+          // Fehlerzeile im Code-Bereich zeigen
+          if (p.line) {
+            const lines = text.split('\n');
+            $('#code').innerHTML = lines
+              .map((l, i) => (i === p.line - 1 ? `<span class="errline">${esc(l) || ' '}</span>` : esc(l)))
+              .join('\n');
+            outText = '';
+            $('#tree').innerHTML = '';
+            renderStats();
+          }
+          return false;
+        }
+      }
+
+      function run(mode) {
+        if (!validate()) return;
+        let v = $('#sort').checked ? sortDeep(parsed) : parsed;
+        const text = mode === 'min' ? JSON.stringify(v) : JSON.stringify(v, null, indentVal());
+        setOutput(text);
+      }
+
+      let lastMode = 'fmt';
+      let timer;
+      src.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => run(lastMode), 200);
+      });
+      // Tab im Eingabefeld einrücken statt Fokus wechseln
+      src.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab' && !e.shiftKey) {
+          e.preventDefault();
+          document.execCommand('insertText', false, '  ');
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          $('#fmt').click();
+        }
+      });
+
+      $('#fmt').addEventListener('click', () => {
+        lastMode = 'fmt';
+        run('fmt');
+        if (parsed !== undefined) src.value = outText;
+      });
+      $('#min').addEventListener('click', () => {
+        lastMode = 'min';
+        run('min');
+      });
+      $('#repair').addEventListener('click', () => {
+        const fixed = repair(src.value);
+        if (fixed === src.value) {
+          status.className = 'msg';
+          status.textContent = t('nothingRepair');
+          return;
+        }
+        src.value = fixed;
+        run(lastMode);
+        if (parsed !== undefined) {
+          status.className = 'msg ok';
+          status.textContent = t('valid') + ' · ' + t('repaired');
+        }
+      });
+      $('#indent').addEventListener('change', () => run(lastMode));
+      $('#sort').addEventListener('change', () => run(lastMode));
+      $('#clear').addEventListener('click', () => {
+        src.value = '';
+        validate();
+        $('#path').textContent = '';
+        src.focus();
+      });
+      $('#sample').addEventListener('click', () => {
+        src.value = `{"tool":"ToolVault","version":2,"local":true,"tags":["json","dev","format"],
+"owner":{"name":"A. Marro","links":{"linkedin":"https://www.linkedin.com/"}},
+"tools":[{"id":1,"name":"QR Decoder","stars":null},{"id":2,"name":"Unit Converter","ratio":0.75}],
+// comments + trailing commas → click Repair
+'trailing': [1, 2, 3,],
+}`;
+        run(lastMode);
+      });
+      $('#copyOut').addEventListener('click', () => outText && copy(outText));
+      $('#dl').addEventListener('click', () => outText && download('formatted.json', outText, 'application/json'));
+
+      function loadFile(f) {
+        if (!f) return;
+        f.text().then((txt) => {
+          src.value = txt;
+          run(lastMode);
+        });
+      }
+      $('#file').addEventListener('change', (e) => loadFile(e.target.files[0]));
+      src.addEventListener('dragover', (e) => e.preventDefault());
+      src.addEventListener('drop', (e) => {
+        if (e.dataTransfer.files.length) {
+          e.preventDefault();
+          loadFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      $$('[data-view]').forEach((b) =>
+        b.addEventListener('click', () => {
+          view = b.dataset.view;
+          $$('[data-view]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+          $('#code').hidden = view !== 'code';
+          $('#tree').hidden = view !== 'tree';
+          $('#path').textContent = view === 'tree' ? t('clickPath') : '';
+        }),
+      );
+
+      TV.init({
+        glyph: '{}',
+        strings: STRINGS,
+        onLang: () => {
+          if (src.value.trim()) run(lastMode);
+          if (view === 'tree') $('#path').textContent = t('clickPath');
+        },
+      });
+      src.focus();
+      // #endregion
+    </script>
+  </body>
+</html>

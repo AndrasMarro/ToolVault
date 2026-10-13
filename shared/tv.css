@@ -483,6 +483,10 @@ label.check {
   margin-top: 10px;
   min-height: 1.2em;
 }
+.msg:empty {
+  margin-top: 0;
+  min-height: 0;
+}
 .msg.ok {
   color: var(--ok);
 }

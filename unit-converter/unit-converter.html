@@ -1,17 +1,22 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en" data-theme="graphite">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UNIT · Universal Converter</title>
+<title>Unit Converter · ToolVault</title>
+<meta name="description" content="Precision unit converter: 15+ categories, scientific steps, engineering notation, physics and chemistry solvers and live exchange rates.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Hub-Basis (Themes, Kopfzeile) vor dem eigenen Stil, Hub-Skin danach -->
+<link rel="stylesheet" href="../shared/tv.css">
+<script src="../shared/tv.js"></script>
 <style>
   /* =========================================================
      Design tokens — engineering paper meets instrument panel
+     (gelten nur ohne ToolVault-Theme; mit Hub-Theme bildet hub-skin.css sie ab)
      ========================================================= */
-  :root {
+  :root:not([data-theme]) {
     --paper: #F0EBE0;
     --paper-dim: #E5DFD1;
     --ink: #14110D;
@@ -762,32 +767,24 @@
     .live-dot, .fx-head .live::before { animation: none; }
     * { transition: none !important; }
   }
-
-/* ToolVault: sanfter Seitenwechsel + Link zurück zur Startseite */
-@view-transition { navigation: auto; }
-.tv-back {
-  display: inline-block; margin-bottom: 14px;
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em;
-  color: var(--ink-mute); text-decoration: none; transition: color 0.15s ease;
-}
-.tv-back:hover { color: var(--accent); }
 </style>
+<link rel="stylesheet" href="hub-skin.css">
 </head>
 <body>
 
 <div class="wrap">
-  <a class="tv-back" href="../index.html">← ToolVault</a>
-
-  <header>
-    <div class="brand">
-      <h1 class="mark">unit<span class="dot">.</span></h1>
-      <span class="tag">Universal Converter · v2</span>
-    </div>
-    <div class="meta">
-      <span class="row"><span class="live-dot"></span><strong id="clock">—</strong> CET</span>
-      <span class="row">SI · IMPERIAL · DERIVED · PHYSICS</span>
+  <header class="topbar">
+    <a class="wordmark" href="../index.html"><span class="prompt">~/</span><span class="hub">ToolVault</span><span class="prompt">/</span><span class="tool">unit</span></a>
+    <div class="topbar-right">
+      <div class="themes" id="themes" role="group" aria-label="Theme"></div>
     </div>
   </header>
+
+  <section class="hero">
+    <p class="kicker">// unit converter · <span class="live-dot"></span><span class="clock" id="clock">—</span> CET · SI · imperial · derived · physics</p>
+    <h1>Convert <span class="accent">anything</span>, show the math.</h1>
+    <p>Six modes, fifteen categories, scientific steps, engineering notation, physics and chemistry solvers and live exchange rates.</p>
+  </section>
 
   <div class="modes" role="tablist">
     <button class="mode active" data-mode="basic" role="tab">
@@ -843,6 +840,10 @@
       <p>Live rates via open.er-api.com. Updates daily. Offline fallback included.</p>
     </div>
   </div>
+
+  <footer class="footer">
+    <a href="../index.html">← ToolVault</a><span>·</span><span>Unit Converter v2.1</span><span>·</span><span>runs locally in your browser</span><span>·</span><span id="tv-year"></span>
+  </footer>
 
 </div>
 
@@ -2175,6 +2176,8 @@ function tickClock() {
 // INIT
 // ============================================================
 function init() {
+  // Themes kommen vom ToolVault-Hub (Punkte oben rechts, geteilt mit der Startseite)
+  if (window.TV) TV.init({ glyph: 'u', lang: false });
   document.querySelectorAll('.mode').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));

@@ -1,0 +1,302 @@
+/* Unit Converter · Hub-Skin
+   Nicht-destruktives Override (VibeCurb visual-redesign): wird NACH dem
+   eigenen <style> geladen. Die ursprünglichen Design-Tokens des Tools gelten
+   nur noch ohne Hub-Theme (:root:not([data-theme])); hier werden sie auf die
+   ToolVault-Themes abgebildet. Rechenlogik und Markup der Modi bleiben unberührt. */
+
+/* #region Tokens */
+:root[data-theme] {
+  --paper: var(--bg);
+  --paper-dim: var(--surface-2);
+  --ink: var(--text);
+  --ink-soft: color-mix(in srgb, var(--text) 68%, var(--bg));
+  --ink-mute: var(--text-muted);
+  --rule: var(--border);
+  --signal: var(--ok);
+  /* Instrumenten-Display bleibt dunkel, folgt aber dem Theme */
+  --display-bg: color-mix(in srgb, var(--bg) 45%, #050403);
+  --display-fg: #ece4d6;
+  --display-accent: var(--accent);
+  --display-green: #6fd08f;
+  --font-display: 'Instrument Serif', Georgia, serif; /* nur noch für Formeln */
+  --font-body: var(--sans);
+  --font-mono: var(--mono);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-theme='paper'] {
+  --display-bg: #211d18;
+  --display-accent: #ff7a3d;
+}
+/* #endregion */
+
+/* #region Grundlagen: Millimeterpapier-Hintergrund raus, Hub-Fläche rein */
+html,
+body {
+  background: var(--bg);
+  font-size: 15px;
+}
+body {
+  background-image: none;
+}
+body::before {
+  display: none;
+}
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.wrap {
+  max-width: 1100px;
+  padding: 28px 24px 64px;
+}
+header.topbar {
+  display: flex;
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 44px;
+}
+.hero .clock {
+  color: var(--text);
+}
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  margin: 0 6px 1px 0;
+}
+/* #endregion */
+
+/* #region Modus-Kacheln */
+.modes {
+  gap: 8px;
+  border: 0;
+  background: none;
+  margin-bottom: 14px;
+}
+.modes > .mode.mode.mode {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px 14px;
+  transition:
+    border-color 0.25s var(--ease),
+    background 0.25s var(--ease),
+    transform 0.25s var(--ease);
+}
+.modes > .mode.mode.mode:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  transform: translateY(-2px);
+}
+.modes > .mode.mode.mode.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mode .num {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+}
+.mode .name {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+}
+.mode .hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.mode.active .name {
+  color: var(--text);
+}
+.mode.active .hint {
+  color: var(--text-muted);
+}
+.mode.active .num {
+  color: var(--accent);
+}
+/* #endregion */
+
+/* #region Einstellungen + Panels */
+.settings {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-size: 0.72rem;
+}
+.settings label {
+  color: var(--text-muted);
+}
+.panel-grid {
+  gap: 14px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.panel-head {
+  background: transparent;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 14px 18px;
+}
+.panel-body {
+  padding: 18px;
+}
+.field label {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+/* #endregion */
+
+/* #region Eingaben */
+input[type='text'],
+input[type='number'],
+select {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  transition:
+    border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease);
+}
+input[type='text']:focus,
+input[type='number']:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* Pfeil passend zum Theme (hell auf dunkel, dunkel auf Paper) */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b8ad9e' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+}
+[data-theme='paper'] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2320201c' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+}
+.input-big {
+  border-radius: 10px !important;
+}
+.physics-input-group > * {
+  border-radius: 9px;
+}
+.chip {
+  border-radius: 6px;
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  transition:
+    border-color 0.2s var(--ease),
+    color 0.2s var(--ease);
+}
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+/* #endregion */
+
+/* #region Anzeige, Rechenweg, Formeln, Hinweise */
+.readout {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.readout .eq-display {
+  border-radius: 8px;
+}
+.si-base-chip {
+  border-radius: 6px;
+  color: var(--text);
+}
+.formula-card {
+  border-radius: 10px;
+  background: var(--bg);
+  transition:
+    border-color 0.2s var(--ease),
+    background 0.2s var(--ease);
+}
+.formula-card:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.formula-card .name {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.info-note {
+  border-radius: 0 10px 10px 0;
+  color: var(--text);
+}
+.info-note code {
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+/* #endregion */
+
+/* #region Währungs-Terminal */
+.fx-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.fx-head {
+  background: color-mix(in srgb, var(--display-bg) 70%, #000);
+}
+.fx-head .refresh-btn,
+.fx-currency-pick,
+.fx-swap,
+.fx-amount-input {
+  border-radius: 8px;
+}
+.fx-picker-inner {
+  border-radius: 14px;
+  overflow: hidden;
+}
+/* #endregion */
+
+/* #region Fusszeile */
+.footer-grid {
+  margin-top: 56px;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.footer-grid h5 {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.footer-grid strong {
+  color: var(--text);
+}
+.wrap > .footer {
+  margin-top: 28px;
+}
+/* #endregion */
+
+@media (max-width: 920px) {
+  .modes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .wrap {
+    padding: 22px 16px 48px;
+  }
+  .modes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

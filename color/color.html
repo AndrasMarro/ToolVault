@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light" />
     <meta
       name="description"
-      content="Convert colours between HEX, RGB, HSL, HSV, CMYK and OKLCH, check WCAG contrast and build palettes — all in the browser."
+      content="Colour wheel with harmonies, readable colour names, gradients, colour-blindness preview, WCAG contrast and conversion between HEX, RGB, HSL, HSV, CMYK and OKLCH."
     />
     <title>Color Converter · ToolVault</title>
 
@@ -18,22 +18,10 @@
     />
     <link rel="stylesheet" href="../shared/tv.css" />
     <script src="../shared/tv.js"></script>
+    <script src="../shared/color.js"></script>
 
     <style>
-      .picker-row {
-        display: grid;
-        grid-template-columns: 132px 1fr;
-        gap: 16px;
-        align-items: stretch;
-      }
-      .swatch {
-        position: relative;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        min-height: 132px;
-        overflow: hidden;
-        cursor: pointer;
-        /* Schachbrett für Transparenz */
+      .checker {
         background-color: #fff;
         background-image:
           linear-gradient(45deg, #ccc 25%, transparent 25%),
@@ -46,6 +34,21 @@
           0 7px,
           7px -7px,
           -7px 0;
+      }
+      /* Kopf: Farbfeld + Eingabe + Name */
+      .head {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1.1fr);
+        gap: 18px;
+        align-items: stretch;
+      }
+      .swatch {
+        position: relative;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        min-height: 150px;
+        overflow: hidden;
+        cursor: pointer;
       }
       .swatch .fill {
         position: absolute;
@@ -67,7 +70,7 @@
         font-size: 0.66rem;
         padding: 2px 6px;
         border-radius: 5px;
-        background: rgba(0, 0, 0, 0.45);
+        background: rgba(0, 0, 0, 0.5);
         color: #fff;
         pointer-events: none;
       }
@@ -80,13 +83,267 @@
         font-size: 0.8rem;
         color: var(--text-muted);
       }
+      .name-panel {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .name-main {
+        font-size: 1.35rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-wrap: balance;
+      }
+      .name-main::first-letter {
+        text-transform: uppercase;
+      }
+      .name-row {
+        display: grid;
+        grid-template-columns: 7.8em 1fr;
+        gap: 8px;
+        align-items: baseline;
+        font-size: 0.86rem;
+      }
+      .name-row .k {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+      }
+      .name-row .v {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .dot {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        flex: none;
+        vertical-align: -2px;
+      }
+      .tiny {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+
+      /* Farbrad */
+      .wheel-wrap {
+        display: grid;
+        grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+        gap: 22px;
+        align-items: start;
+      }
+      .wheel {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        touch-action: none;
+        user-select: none;
+      }
+      .wheel canvas {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: block;
+      }
+      .wheel svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .marker {
+        cursor: grab;
+      }
+      .marker:active {
+        cursor: grabbing;
+      }
+      .marker text {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        pointer-events: none;
+      }
+      .rules {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
       .palette {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .pcol {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+      .pbar {
+        position: relative;
+        height: 150px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: transform 0.15s ease;
+      }
+      .pbar:hover {
+        transform: translateY(-2px);
+      }
+      .pbar.base {
+        outline: 2px solid var(--text);
+        outline-offset: 2px;
+      }
+      .pbar .num {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+      }
+      .pcol .hex {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+      .pcol .nm {
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        line-height: 1.3;
+        min-height: 2.6em;
+      }
+      .bright {
+        display: grid;
+        grid-template-columns: auto 1fr 3em;
+        gap: 10px;
+        align-items: center;
+        margin-top: 12px;
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--text-muted);
+      }
+
+      /* Verläufe */
+      .grad {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+      .grad + .grad {
+        margin-top: 12px;
+      }
+      .grad-bar {
+        height: 54px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        position: relative;
+      }
+      .grad-label {
+        grid-column: 1 / -1;
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-bottom: -4px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .steps {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        height: 100%;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .steps span {
+        cursor: pointer;
+      }
+
+      /* Farbschwäche */
+      .cvd-row {
+        display: grid;
+        grid-template-columns: 11em minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+      }
+      .cvd-row + .cvd-row {
+        margin-top: 8px;
+      }
+      .cvd-row .lbl {
+        font-size: 0.82rem;
+      }
+      .cvd-row .lbl small {
+        display: block;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        color: var(--text-muted);
+      }
+      .cvd-sw {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        height: 40px;
+      }
+      .cvd-sw span {
+        border-radius: 6px;
+        position: relative;
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+      }
+
+      /* Formate / Kontrast / Abstufungen */
+      .contrast-preview {
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 16px;
+        margin-top: 12px;
+      }
+      .contrast-preview .big {
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .ratio {
+        font-family: var(--mono);
+        font-size: 2rem;
+        font-weight: 700;
+      }
+      .checks {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .scale {
         display: grid;
         grid-template-columns: repeat(11, 1fr);
         gap: 6px;
-      }
-      .palette.harm {
-        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
       }
       .chip {
         border: 1px solid var(--border);
@@ -107,45 +364,47 @@
         outline: 2px solid var(--text);
         outline-offset: 2px;
       }
-      .harm-group + .harm-group {
-        margin-top: 14px;
+      @media (max-width: 900px) {
+        .head {
+          grid-template-columns: 130px minmax(0, 1fr);
+        }
+        .name-panel {
+          grid-column: 1 / -1;
+        }
+        .wheel-wrap {
+          grid-template-columns: 1fr;
+        }
+        .wheel {
+          max-width: 340px;
+          margin: 0 auto;
+        }
       }
-      .harm-group .lbl {
-        font-family: var(--mono);
-        font-size: 0.72rem;
-        color: var(--text-muted);
-        margin-bottom: 6px;
-      }
-      .contrast-preview {
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        padding: 16px;
-        margin-top: 12px;
-      }
-      .contrast-preview .big {
-        font-size: 1.5rem;
-        font-weight: 600;
-        line-height: 1.2;
-      }
-      .contrast-preview .small {
-        font-size: 0.9rem;
-      }
-      .ratio {
-        font-family: var(--mono);
-        font-size: 2rem;
-        font-weight: 700;
-      }
-      .checks {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      @media (max-width: 640px) {
-        .picker-row {
+      @media (max-width: 560px) {
+        .head {
           grid-template-columns: 1fr;
         }
         .palette {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 5px;
+        }
+        .pbar {
+          height: 90px;
+        }
+        .pcol .nm {
+          display: none;
+        }
+        .pcol .hex {
+          font-size: 0.62rem;
+        }
+        .scale {
           grid-template-columns: repeat(6, 1fr);
+        }
+        .cvd-row {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+        .cvd-row .pill {
+          justify-self: start;
         }
       }
     </style>
@@ -173,10 +432,10 @@
         <p data-i18n="lead"></p>
       </section>
 
-      <!-- Eingabe -->
+      <!-- Eingabe + Name -->
       <div class="box">
-        <div class="picker-row">
-          <label class="swatch" id="swatch">
+        <div class="head">
+          <label class="swatch checker" id="swatch">
             <span class="fill" id="swatchFill"></span>
             <input type="color" id="native" aria-label="Color picker" />
             <span class="hint" data-i18n="pick"></span>
@@ -194,13 +453,79 @@
             <div class="row">
               <button class="btn sm" id="random" data-i18n="random"></button>
               <button class="btn sm" id="fromTheme" data-i18n="fromTheme"></button>
-              <span class="msg" id="msg" style="margin: 0"></span>
+              <a class="btn sm" href="../vision/vision.html" data-i18n="toVision"></a>
+            </div>
+            <span class="msg" id="msg" style="margin: 0"></span>
+          </div>
+          <div class="name-panel" aria-live="polite">
+            <div class="tiny" data-i18n="nameIs"></div>
+            <div class="name-main" id="nameMain"></div>
+            <div class="name-row">
+              <span class="k" data-i18n="nameBasic"></span>
+              <span class="v" id="nameBasic"></span>
+            </div>
+            <div class="name-row">
+              <span class="k" data-i18n="nameDb"></span>
+              <span class="v" id="nameDb"></span>
+            </div>
+            <div class="name-row">
+              <span class="k" data-i18n="nameOther"></span>
+              <span class="v" id="nameOther"></span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="cols" style="margin-top: 14px">
+      <!-- Farbrad -->
+      <div class="box">
+        <h2 class="box-title">
+          <span data-i18n="wheel"></span>
+          <span class="row" style="gap: 6px">
+            <button class="btn sm" id="copyPalette" data-i18n="copyPalette"></button>
+            <button class="btn sm" id="copyPaletteCss">CSS</button>
+          </span>
+        </h2>
+        <div class="rules" id="rules"></div>
+        <div class="wheel-wrap">
+          <div>
+            <div class="wheel" id="wheel">
+              <canvas id="wheelCanvas" width="680" height="680"></canvas>
+              <svg id="wheelSvg" viewBox="0 0 340 340" aria-hidden="true"></svg>
+            </div>
+            <div class="bright">
+              <span data-i18n="brightness"></span>
+              <input type="range" id="bright" min="0" max="100" value="91" />
+              <span id="brightVal"></span>
+            </div>
+          </div>
+          <div>
+            <div class="palette" id="palette"></div>
+            <p class="tiny" style="margin: 12px 0 0" data-i18n="wheelHint"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verläufe -->
+      <div class="box">
+        <h2 class="box-title">
+          <span data-i18n="gradients"></span>
+          <span class="seg" id="interp">
+            <button data-space="oklab" aria-selected="true">OKLab</button>
+            <button data-space="oklch" aria-selected="false">OKLCH</button>
+            <button data-space="srgb" aria-selected="false">sRGB</button>
+          </span>
+        </h2>
+        <div id="gradients"></div>
+      </div>
+
+      <!-- Farbschwäche -->
+      <div class="box">
+        <h2 class="box-title"><span data-i18n="cvdTitle"></span></h2>
+        <div id="cvd"></div>
+        <p class="tiny" style="margin: 12px 0 0" data-i18n="cvdNote"></p>
+      </div>
+
+      <div class="cols">
         <!-- Formate -->
         <div class="box">
           <h2 class="box-title"><span data-i18n="formats"></span></h2>
@@ -225,29 +550,23 @@
           </div>
           <div class="contrast-preview" id="preview">
             <div class="big" data-i18n="sampleBig"></div>
-            <div class="small" data-i18n="sampleSmall"></div>
+            <div data-i18n="sampleSmall"></div>
           </div>
         </div>
       </div>
 
       <!-- Abstufungen -->
-      <div class="box" style="margin-top: 14px">
+      <div class="box">
         <h2 class="box-title">
           <span data-i18n="shades"></span>
           <button class="btn sm" id="copyScale" data-i18n="copyCss"></button>
         </h2>
-        <div class="palette" id="scale"></div>
-      </div>
-
-      <!-- Harmonien -->
-      <div class="box">
-        <h2 class="box-title"><span data-i18n="harmonies"></span></h2>
-        <div id="harmonies"></div>
+        <div class="scale" id="scale"></div>
       </div>
 
       <footer class="footer">
-        <a href="../index.html">← ToolVault</a><span>·</span><span>Color Converter v1.0</span
-        ><span>·</span><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Color Converter v2.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
       </footer>
     </div>
 
@@ -256,14 +575,53 @@
       const STRINGS = {
         de: {
           pageTitle: 'Farb-Konverter',
-          kicker: '// farb-konverter',
-          title: 'Farben <span class="accent">umrechnen</span>, prüfen, kombinieren.',
-          lead: 'HEX, RGB, HSL, HSV, CMYK und OKLCH auf einen Blick. Mit WCAG-Kontrastprüfung, Abstufungen und Farbharmonien.',
+          kicker: '// farb-konverter · farbrad · namen',
+          title: 'Farben <span class="accent">verstehen</span>, kombinieren, umrechnen.',
+          lead: 'Farbrad mit Harmonie-Regeln, verständliche Farbnamen, Verläufe und eine Vorschau, wie Menschen mit Farbschwäche deine Palette sehen. Dazu HEX, RGB, HSL, HSV, CMYK, OKLCH und WCAG-Kontrast.',
           pick: 'klicken zum Wählen',
           inputLabel: 'Farbe eingeben (HEX, rgb(), hsl(), Name …)',
           alpha: 'Alpha',
           random: '⟳ Zufall',
           fromTheme: '◐ Theme-Akzent',
+          toVision: '👁 Farbsehen-Tool',
+          nameIs: 'Diese Farbe ist',
+          nameBasic: 'Am nächsten',
+          nameDb: 'Datenbank',
+          nameOther: 'Auch genannt',
+          approx: (d) => (d < 1 ? 'exakt' : `≈ ΔE ${d.toFixed(1)}`),
+          loadingNames: 'lade …',
+          wheel: 'Farbrad & Harmonien',
+          copyPalette: 'Hex-Liste kopieren',
+          brightness: 'Helligkeit',
+          wheelHint: 'Marker im Rad ziehen (die Zahlen gehören zu den Feldern) · Feld anklicken = als Hauptfarbe übernehmen · Feld 1 ist die Basis.',
+          r_analog: 'Analog',
+          r_mono: 'Monochromatisch',
+          r_triad: 'Triade',
+          r_comp: 'Komplementär',
+          r_split: 'Split-Komplementär',
+          r_square: 'Quadrat',
+          r_compound: 'Zusammengesetzt',
+          r_shades: 'Schattierungen',
+          gradients: 'Farbverläufe',
+          g_comp: 'Basis → Komplementärfarbe',
+          g_palette: 'Ganze Palette',
+          g_harm: (n) => `Basis → Farbe ${n}`,
+          g_steps: 'In 7 Stufen (klicken = übernehmen)',
+          g_mid: 'Mitte',
+          cvdTitle: 'So sehen andere deine Palette',
+          cvdNote: 'Simulation nach Machado et al. (2009). „Zu ähnlich“ heisst: zwei Felder sind für diese Sehweise kaum unterscheidbar (ΔE < 6). Ein Grossteil der Farbschwachen hat eine Rot-Grün-Schwäche.',
+          cvd_normal: 'Normalsichtig',
+          cvd_protan: 'Protanopie',
+          cvd_deutan: 'Deuteranopie',
+          cvd_tritan: 'Tritanopie',
+          cvd_achroma: 'Achromatopsie',
+          cvdSub_protan: 'Rotblind · ca. 1 % der Männer',
+          cvdSub_deutan: 'Grünblind · ca. 1 % der Männer',
+          cvdSub_tritan: 'Blaublind · sehr selten',
+          cvdSub_achroma: 'keine Farben · sehr selten',
+          cvdSub_normal: 'Referenz',
+          allDistinct: '✓ alle unterscheidbar',
+          tooSimilar: (a, b) => `⚠ ${a} & ${b} zu ähnlich`,
           formats: 'Formate',
           contrast: 'Kontrast (WCAG 2.1)',
           against: 'Hintergrund / Vergleichsfarbe',
@@ -271,27 +629,60 @@
           sampleBig: 'Grosser Text 24px',
           sampleSmall: 'Normaler Fliesstext – so liest sich die Kombination im Alltag.',
           shades: 'Abstufungen (hell → dunkel)',
-          harmonies: 'Harmonien',
           copyCss: 'Als CSS kopieren',
           invalid: 'Unbekanntes Farbformat',
-          local: 'läuft lokal im Browser',
-          comp: 'Komplementär',
-          analog: 'Analog',
-          triad: 'Triade',
-          tetrad: 'Tetrade',
-          split: 'Split-Komplementär',
           copy: 'Kopieren',
+          local: 'läuft lokal im Browser',
         },
         en: {
           pageTitle: 'Color Converter',
-          kicker: '// color converter',
-          title: 'Convert, check and <span class="accent">combine</span> colours.',
-          lead: 'HEX, RGB, HSL, HSV, CMYK and OKLCH at a glance. With WCAG contrast checking, shade scales and colour harmonies.',
+          kicker: '// color converter · wheel · names',
+          title: '<span class="accent">Understand</span>, combine and convert colours.',
+          lead: 'A colour wheel with harmony rules, readable colour names, gradients and a preview of how people with colour-vision deficiency see your palette. Plus HEX, RGB, HSL, HSV, CMYK, OKLCH and WCAG contrast.',
           pick: 'click to pick',
           inputLabel: 'Enter a colour (HEX, rgb(), hsl(), name …)',
           alpha: 'Alpha',
           random: '⟳ Random',
           fromTheme: '◐ Theme accent',
+          toVision: '👁 Colour vision tool',
+          nameIs: 'This colour is',
+          nameBasic: 'Closest',
+          nameDb: 'Database',
+          nameOther: 'Also called',
+          approx: (d) => (d < 1 ? 'exact' : `≈ ΔE ${d.toFixed(1)}`),
+          loadingNames: 'loading …',
+          wheel: 'Colour wheel & harmonies',
+          copyPalette: 'Copy hex list',
+          brightness: 'Brightness',
+          wheelHint: 'Drag the markers on the wheel (numbers match the swatches) · click a swatch to make it the main colour · swatch 1 is the base.',
+          r_analog: 'Analogous',
+          r_mono: 'Monochromatic',
+          r_triad: 'Triad',
+          r_comp: 'Complementary',
+          r_split: 'Split complementary',
+          r_square: 'Square',
+          r_compound: 'Compound',
+          r_shades: 'Shades',
+          gradients: 'Gradients',
+          g_comp: 'Base → complementary',
+          g_palette: 'Whole palette',
+          g_harm: (n) => `Base → colour ${n}`,
+          g_steps: 'In 7 steps (click = use)',
+          g_mid: 'midpoint',
+          cvdTitle: 'How others see your palette',
+          cvdNote: 'Simulation after Machado et al. (2009). “Too similar” means two swatches are hard to tell apart for that type of vision (ΔE < 6). Most colour-blind people have a red–green deficiency.',
+          cvd_normal: 'Typical vision',
+          cvd_protan: 'Protanopia',
+          cvd_deutan: 'Deuteranopia',
+          cvd_tritan: 'Tritanopia',
+          cvd_achroma: 'Achromatopsia',
+          cvdSub_protan: 'red-blind · ~1% of men',
+          cvdSub_deutan: 'green-blind · ~1% of men',
+          cvdSub_tritan: 'blue-blind · very rare',
+          cvdSub_achroma: 'no colour · very rare',
+          cvdSub_normal: 'reference',
+          allDistinct: '✓ all distinguishable',
+          tooSimilar: (a, b) => `⚠ ${a} & ${b} too similar`,
           formats: 'Formats',
           contrast: 'Contrast (WCAG 2.1)',
           against: 'Background / compare colour',
@@ -299,29 +690,22 @@
           sampleBig: 'Large text 24px',
           sampleSmall: 'Normal body text – this is how the pairing reads day to day.',
           shades: 'Shades (light → dark)',
-          harmonies: 'Harmonies',
           copyCss: 'Copy as CSS',
           invalid: 'Unknown colour format',
-          local: 'runs locally in your browser',
-          comp: 'Complementary',
-          analog: 'Analogous',
-          triad: 'Triadic',
-          tetrad: 'Tetradic',
-          split: 'Split complementary',
           copy: 'Copy',
+          local: 'runs locally in your browser',
         },
       };
       // #endregion
 
+      const { $, $$, t, esc, copy } = TV;
+      const C = TVColor;
+
       // #region Farb-Mathe (r,g,b in 0–255, a in 0–1)
       const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-      const round = (v, d = 0) => {
-        const f = 10 ** d;
-        return Math.round(v * f) / f;
-      };
-
+      const round = (v, d = 0) => Math.round(v * 10 ** d) / 10 ** d;
       function rgbToHex({ r, g, b, a = 1 }) {
-        const h = (n) => Math.round(n).toString(16).padStart(2, '0');
+        const h = (n) => Math.round(clamp(n, 0, 255)).toString(16).padStart(2, '0');
         return '#' + h(r) + h(g) + h(b) + (a < 1 ? h(a * 255) : '');
       }
       function rgbToHsl({ r, g, b }) {
@@ -368,7 +752,15 @@
           min = Math.min(r, g, b),
           d = max - min;
         const { h } = rgbToHsl({ r: r * 255, g: g * 255, b: b * 255 });
-        return { h, s: max === 0 ? 0 : (d / max) * 100, v: max * 100 };
+        return { h, s: max === 0 ? 0 : d / max, v: max };
+      }
+      function hsvToRgb(h, s, v) {
+        h = ((h % 360) + 360) % 360;
+        const f = (n) => {
+          const k = (n + h / 60) % 6;
+          return v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+        };
+        return { r: f(5) * 255, g: f(3) * 255, b: f(1) * 255 };
       }
       function rgbToCmyk({ r, g, b }) {
         r /= 255;
@@ -376,80 +768,64 @@
         b /= 255;
         const k = 1 - Math.max(r, g, b);
         if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
-        return {
-          c: ((1 - r - k) / (1 - k)) * 100,
-          m: ((1 - g - k) / (1 - k)) * 100,
-          y: ((1 - b - k) / (1 - k)) * 100,
-          k: k * 100,
-        };
+        return { c: ((1 - r - k) / (1 - k)) * 100, m: ((1 - g - k) / (1 - k)) * 100, y: ((1 - b - k) / (1 - k)) * 100, k: k * 100 };
       }
-      // sRGB -> OKLab -> OKLCH (Björn Ottosson)
-      function rgbToOklch({ r, g, b }) {
-        const lin = (c) => {
-          c /= 255;
-          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-        };
-        const R = lin(r),
-          G = lin(g),
-          B = lin(b);
-        const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
-        const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
-        const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
-        const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
-        const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
-        const Bk = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
-        const C = Math.sqrt(A * A + Bk * Bk);
-        let H = (Math.atan2(Bk, A) * 180) / Math.PI;
-        if (H < 0) H += 360;
-        return { l: L * 100, c: C, h: C < 0.0001 ? 0 : H };
-      }
-      function luminance({ r, g, b }) {
+      const luminance = ({ r, g, b }) => {
         const ch = (c) => {
           c /= 255;
           return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
         };
         return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
-      }
-      function contrast(a, b) {
+      };
+      const contrast = (a, b) => {
         const la = luminance(a),
           lb = luminance(b);
         return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+      };
+      const over = (fg, bg) => ({ r: fg.r * fg.a + bg.r * (1 - fg.a), g: fg.g * fg.a + bg.g * (1 - fg.a), b: fg.b * fg.a + bg.b * (1 - fg.a), a: 1 });
+      const textOn = (c) => (luminance(c) > 0.42 ? '#111' : '#fff');
+
+      // OKLab <-> sRGB (für Verläufe)
+      function oklabToRgb({ L, a, b }) {
+        const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+        const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+        const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+        const lin = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+        const g = (c) => 255 * clamp(c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055, 0, 1);
+        return { r: g(lin[0]), g: g(lin[1]), b: g(lin[2]) };
       }
-      // Halbtransparente Farbe auf Hintergrund mischen (für Kontrast)
-      const over = (fg, bg) => ({
-        r: fg.r * fg.a + bg.r * (1 - fg.a),
-        g: fg.g * fg.a + bg.g * (1 - fg.a),
-        b: fg.b * fg.a + bg.b * (1 - fg.a),
-        a: 1,
-      });
+      function mix(c1, c2, tt, space) {
+        if (space === 'srgb') return { r: c1.r + (c2.r - c1.r) * tt, g: c1.g + (c2.g - c1.g) * tt, b: c1.b + (c2.b - c1.b) * tt };
+        const a = C.oklab(c1),
+          b = C.oklab(c2);
+        if (space === 'oklch') {
+          const ca = Math.hypot(a.a, a.b),
+            cb = Math.hypot(b.a, b.b);
+          let ha = Math.atan2(a.b, a.a),
+            hb = Math.atan2(b.b, b.a);
+          let dh = hb - ha;
+          if (dh > Math.PI) dh -= 2 * Math.PI;
+          if (dh < -Math.PI) dh += 2 * Math.PI;
+          const h = ha + dh * tt,
+            cc = ca + (cb - ca) * tt;
+          return oklabToRgb({ L: a.L + (b.L - a.L) * tt, a: cc * Math.cos(h), b: cc * Math.sin(h) });
+        }
+        return oklabToRgb({ L: a.L + (b.L - a.L) * tt, a: a.a + (b.a - a.a) * tt, b: a.b + (b.b - a.b) * tt });
+      }
       // #endregion
 
       // #region Parser — eigene Regeln + Canvas als Fallback (Namen, hwb(), lab() …)
-      const ctx = document.createElement('canvas').getContext('2d');
-      const num = (s, max) => {
-        s = s.trim();
-        if (s.endsWith('%')) return (parseFloat(s) / 100) * max;
-        return parseFloat(s);
-      };
-
+      const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      const num = (s, max) => (s.trim().endsWith('%') ? (parseFloat(s) / 100) * max : parseFloat(s));
       function parse(input) {
         let s = String(input).trim().toLowerCase();
         if (!s) return null;
-
-        // HEX (mit oder ohne #)
         let m = s.match(/^#?([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/);
         if (m) {
           let h = m[1];
           if (h.length <= 4) h = [...h].map((c) => c + c).join('');
-          return {
-            r: parseInt(h.slice(0, 2), 16),
-            g: parseInt(h.slice(2, 4), 16),
-            b: parseInt(h.slice(4, 6), 16),
-            a: h.length === 8 ? round(parseInt(h.slice(6, 8), 16) / 255, 3) : 1,
-          };
+          return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: h.length === 8 ? round(parseInt(h.slice(6, 8), 16) / 255, 3) : 1 };
         }
-
-        // Funktionen: rgb(), hsl(), hsv(), cmyk() — Komma oder Leerzeichen, optional / alpha
         m = s.match(/^(rgba?|hsla?|hsv|hsb|cmyk)\s*\(([^)]*)\)$/);
         if (m) {
           const fn = m[1];
@@ -459,36 +835,16 @@
             const [r, g, b] = parts.slice(0, 3).map((p) => clamp(num(p, 255), 0, 255));
             return { r, g, b, a: alpha(3) };
           }
-          if (fn.startsWith('hsl') && parts.length >= 3) {
-            const h = parseFloat(parts[0]);
-            const sat = clamp(parseFloat(parts[1]), 0, 100);
-            const l = clamp(parseFloat(parts[2]), 0, 100);
-            return { ...hslToRgb({ h, s: sat, l }), a: alpha(3) };
-          }
-          if ((fn === 'hsv' || fn === 'hsb') && parts.length >= 3) {
-            const h = parseFloat(parts[0]);
-            const sv = clamp(parseFloat(parts[1]), 0, 100) / 100;
-            const v = clamp(parseFloat(parts[2]), 0, 100) / 100;
-            const l = v * (1 - sv / 2);
-            const sl = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
-            return { ...hslToRgb({ h, s: sl * 100, l: l * 100 }), a: alpha(3) };
-          }
+          if (fn.startsWith('hsl') && parts.length >= 3) return { ...hslToRgb({ h: parseFloat(parts[0]), s: clamp(parseFloat(parts[1]), 0, 100), l: clamp(parseFloat(parts[2]), 0, 100) }), a: alpha(3) };
+          if ((fn === 'hsv' || fn === 'hsb') && parts.length >= 3) return { ...hsvToRgb(parseFloat(parts[0]), clamp(parseFloat(parts[1]), 0, 100) / 100, clamp(parseFloat(parts[2]), 0, 100) / 100), a: alpha(3) };
           if (fn === 'cmyk' && parts.length >= 4) {
             const [c, mm, y, k] = parts.map((p) => clamp(parseFloat(p), 0, 100) / 100);
-            return {
-              r: 255 * (1 - c) * (1 - k),
-              g: 255 * (1 - mm) * (1 - k),
-              b: 255 * (1 - y) * (1 - k),
-              a: 1,
-            };
+            return { r: 255 * (1 - c) * (1 - k), g: 255 * (1 - mm) * (1 - k), b: 255 * (1 - y) * (1 - k), a: 1 };
           }
         }
-
-        // Fallback: Browser parsen lassen (CSS-Namen, hwb(), lab(), oklch() …)
         ctx.fillStyle = '#010203';
         ctx.fillStyle = s;
-        const out = ctx.fillStyle;
-        if (out === '#010203' && s.replace(/\s/g, '') !== '#010203') return null;
+        if (ctx.fillStyle === '#010203' && s.replace(/\s/g, '') !== '#010203') return null;
         ctx.clearRect(0, 0, 1, 1);
         ctx.fillRect(0, 0, 1, 1);
         const d = ctx.getImageData(0, 0, 1, 1).data;
@@ -496,18 +852,299 @@
       }
       // #endregion
 
-      // #region UI
-      const { $, t, esc, copy } = TV;
+      // #region Zustand
       const input = $('#input');
-      const alphaEl = $('#alpha');
       let color = { r: 232, g: 162, b: 60, a: 1 };
+      // Farbton/Sättigung für das Rad separat merken (bei Grau geht der Farbton sonst verloren)
+      let wheel = { h: 36, s: 0.74, v: 0.91 };
+      let rule = 'comp';
+      let space = 'oklab';
+      let palette = [];
+      // #endregion
 
+      // #region Name
+      function nameHtml(n) {
+        return `<span class="dot" style="background:${n.hex}"></span><span>${esc(n.name)}</span><span class="tiny">${esc(n.hex)} · ${esc(t('approx', n.dE))}</span>`;
+      }
+      function renderName() {
+        const c = { r: color.r, g: color.g, b: color.b };
+        const lang = TV.lang;
+        $('#nameMain').textContent = C.describe(c, lang);
+        $('#nameBasic').innerHTML = nameHtml(C.basicName(c, lang));
+        const db = C.namedColor(c);
+        $('#nameDb').innerHTML = db ? nameHtml(db) : `<span class="tiny">${esc(t('loadingNames'))}</span>`;
+        // Die jeweils andere Sprache als Zusatz
+        const other = lang === 'de' ? 'en' : 'de';
+        $('#nameOther').innerHTML = `<span>${esc(C.basicName(c, other).name)}</span><span class="tiny">· ${esc(C.describe(c, other))}</span>`;
+      }
+      // #endregion
+
+      // #region Farbrad
+      const RULES = {
+        // [Farbton-Versatz, Sättigungs-Faktor, Helligkeits-Faktor] – Eintrag 0 = Basis
+        analog: [[0, 1, 1], [-30, 1, 1], [30, 1, 1], [-60, 1, 1], [60, 1, 1]],
+        mono: [[0, 1, 1], [0, 0.45, 1], [0, 1, 0.62], [0, 0.7, 0.82], [0, 0.25, 1]],
+        triad: [[0, 1, 1], [120, 1, 1], [240, 1, 1], [0, 0.6, 1], [120, 1, 0.65]],
+        comp: [[0, 1, 1], [180, 1, 1], [0, 0.55, 1], [180, 0.55, 1], [0, 1, 0.6]],
+        split: [[0, 1, 1], [150, 1, 1], [210, 1, 1], [0, 0.55, 1], [150, 1, 0.65]],
+        square: [[0, 1, 1], [90, 1, 1], [180, 1, 1], [270, 1, 1], [0, 0.5, 1]],
+        compound: [[0, 1, 1], [30, 1, 1], [165, 1, 1], [195, 1, 1], [0, 1, 0.6]],
+        shades: [[0, 1, 1], [0, 1, 0.8], [0, 1, 0.6], [0, 1, 0.42], [0, 1, 0.26]],
+      };
+      function computePalette() {
+        palette = RULES[rule].map(([dh, sf, vf]) => {
+          const h = (wheel.h + dh + 360) % 360;
+          const s = clamp(wheel.s * sf, 0, 1);
+          const v = clamp(wheel.v * vf, 0, 1);
+          return { h, s, v, rgb: hsvToRgb(h, s, v) };
+        });
+      }
+
+      let drawnV = -1;
+      function drawWheel() {
+        if (Math.abs(drawnV - wheel.v) < 0.002) return;
+        drawnV = wheel.v;
+        const cv = $('#wheelCanvas');
+        const size = cv.width;
+        const g = cv.getContext('2d');
+        const img = g.createImageData(size, size);
+        const R = size / 2;
+        for (let y = 0; y < size; y++)
+          for (let x = 0; x < size; x++) {
+            const dx = x - R + 0.5,
+              dy = y - R + 0.5;
+            const d = Math.hypot(dx, dy);
+            const i = (y * size + x) * 4;
+            if (d > R) continue;
+            // 0° oben, im Uhrzeigersinn – wie bei Adobe
+            const h = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+            const c = hsvToRgb(h, d / R, wheel.v);
+            img.data[i] = c.r;
+            img.data[i + 1] = c.g;
+            img.data[i + 2] = c.b;
+            // weicher Rand
+            img.data[i + 3] = d > R - 1.5 ? 255 * (R - d) / 1.5 : 255;
+          }
+        g.putImageData(img, 0, 0);
+      }
+      const polar = (h, s) => {
+        const a = (h * Math.PI) / 180;
+        return { x: 170 + Math.sin(a) * s * 160, y: 170 - Math.cos(a) * s * 160 };
+      };
+      function drawMarkers() {
+        const svg = $('#wheelSvg');
+        let out = '';
+        palette.forEach((p, i) => {
+          const { x, y } = polar(p.h, p.s);
+          out += `<line x1="170" y1="170" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.75)" stroke-width="${i ? 1 : 2}"/>`;
+        });
+        palette.forEach((p, i) => {
+          const { x, y } = polar(p.h, p.s);
+          const r = i === 0 ? 15 : 12;
+          const fill = C.rgbToHex(p.rgb);
+          out += `<g class="marker" data-i="${i}" transform="translate(${x} ${y})">
+              <circle r="${r + 3}" fill="rgba(0,0,0,.35)"/>
+              <circle r="${r}" fill="${fill}" stroke="#fff" stroke-width="${i === 0 ? 3 : 2}"/>
+              <text text-anchor="middle" dy="4" fill="${textOn(p.rgb)}">${i + 1}</text></g>`;
+        });
+        svg.innerHTML = out;
+      }
+      function renderPalette() {
+        const box = $('#palette');
+        box.innerHTML = '';
+        palette.forEach((p, i) => {
+          const hex = C.rgbToHex(p.rgb).toUpperCase();
+          const col = document.createElement('div');
+          col.className = 'pcol';
+          col.innerHTML = `<div class="pbar${i === 0 ? ' base' : ''}" style="background:${hex}" title="${hex}"><span class="num">${i + 1}</span></div>
+            <div class="hex">${hex}</div><div class="nm">${esc(C.describe(p.rgb, TV.lang))}</div>`;
+          col.querySelector('.pbar').addEventListener('click', () => setColor({ ...p.rgb, a: 1 }, true, { h: p.h, s: p.s, v: p.v }));
+          const b = document.createElement('button');
+          b.className = 'btn sm';
+          b.textContent = t('copy');
+          b.addEventListener('click', () => copy(hex));
+          col.appendChild(b);
+          box.appendChild(col);
+        });
+        $$('#rules button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.rule === rule)));
+        $('#bright').value = Math.round(wheel.v * 100);
+        $('#brightVal').textContent = Math.round(wheel.v * 100) + '%';
+      }
+      function renderRules() {
+        $('#rules').innerHTML = '';
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        Object.keys(RULES).forEach((k) => {
+          const b = document.createElement('button');
+          b.dataset.rule = k;
+          b.textContent = t('r_' + k);
+          b.setAttribute('aria-selected', String(k === rule));
+          b.addEventListener('click', () => {
+            rule = k;
+            renderWheelAll();
+            try {
+              localStorage.setItem('tv-color-rule', k);
+            } catch (e) {}
+          });
+          seg.appendChild(b);
+        });
+        $('#rules').appendChild(seg);
+      }
+      function renderWheelAll() {
+        computePalette();
+        drawWheel();
+        drawMarkers();
+        renderPalette();
+        renderGradients();
+        renderCvd();
+      }
+
+      // Ziehen der Marker
+      (function () {
+        const wrap = $('#wheel');
+        let drag = null;
+        const pos = (e) => {
+          const r = wrap.getBoundingClientRect();
+          const x = ((e.clientX - r.left) / r.width) * 340 - 170;
+          const y = ((e.clientY - r.top) / r.height) * 340 - 170;
+          return { h: ((Math.atan2(x, -y) * 180) / Math.PI + 360) % 360, s: clamp(Math.hypot(x, y) / 160, 0, 1) };
+        };
+        wrap.addEventListener('pointerdown', (e) => {
+          const m = e.target.closest('.marker');
+          const i = m ? +m.dataset.i : 0; // Klick ins Rad = Basis dorthin
+          const [dh, sf] = RULES[rule][i];
+          drag = { i, dh, sf };
+          wrap.setPointerCapture(e.pointerId);
+          move(e);
+        });
+        const move = (e) => {
+          if (!drag) return;
+          const p = pos(e);
+          wheel.h = (p.h - drag.dh + 360) % 360;
+          wheel.s = drag.sf ? clamp(p.s / drag.sf, 0, 1) : wheel.s;
+          const base = hsvToRgb(wheel.h, wheel.s, wheel.v);
+          setColor({ ...base, a: color.a }, true, { ...wheel });
+        };
+        wrap.addEventListener('pointermove', move);
+        wrap.addEventListener('pointerup', () => (drag = null));
+        wrap.addEventListener('pointercancel', () => (drag = null));
+      })();
+      $('#bright').addEventListener('input', (e) => {
+        wheel.v = e.target.value / 100;
+        setColor({ ...hsvToRgb(wheel.h, wheel.s, wheel.v), a: color.a }, true, { ...wheel });
+      });
+      $('#copyPalette').addEventListener('click', () => copy(palette.map((p) => C.rgbToHex(p.rgb).toUpperCase()).join(', ')));
+      $('#copyPaletteCss').addEventListener('click', () =>
+        copy(':root {\n' + palette.map((p, i) => `  --palette-${i + 1}: ${C.rgbToHex(p.rgb)}; /* ${C.describe(p.rgb, TV.lang)} */`).join('\n') + '\n}', 'CSS'),
+      );
+      // #endregion
+
+      // #region Verläufe
+      const cssStops = (cols) => cols.map((c) => C.rgbToHex(c)).join(', ');
+      const cssGrad = (cols) => (space === 'srgb' ? `linear-gradient(90deg, ${cssStops(cols)})` : `linear-gradient(90deg in ${space}, ${cssStops(cols)})`);
+      // Für die Anzeige berechnen wir die Zwischenfarben selbst (funktioniert in jedem Browser)
+      function sampleStops(cols, n = 24) {
+        const out = [];
+        for (let i = 0; i <= n; i++) {
+          const pos = (i / n) * (cols.length - 1);
+          const k = Math.min(cols.length - 2, Math.floor(pos));
+          out.push(mix(cols[k], cols[k + 1], pos - k, space));
+        }
+        return out;
+      }
+      function gradRow(label, cols, withSteps) {
+        const row = document.createElement('div');
+        row.className = 'grad';
+        const mid = mix(cols[0], cols[cols.length - 1], 0.5, space);
+        row.innerHTML = `<div class="grad-label">${cols.map((c, i) => `<span class="dot" style="background:${C.rgbToHex(c)}"></span>`).join('')}<span>${esc(label)}</span>
+          ${cols.length === 2 ? `<span>· ${esc(t('g_mid'))}: ${esc(C.describe(mid, TV.lang))}</span>` : ''}</div>`;
+        const bar = document.createElement('div');
+        bar.className = 'grad-bar';
+        bar.style.background = `linear-gradient(90deg, ${cssStops(sampleStops(cols))})`;
+        const b = document.createElement('button');
+        b.className = 'btn sm';
+        b.textContent = 'CSS';
+        b.addEventListener('click', () => copy(`background: ${cssGrad(cols)};`, 'CSS'));
+        row.append(bar, b);
+        if (withSteps) {
+          const st = document.createElement('div');
+          st.className = 'grad-bar';
+          st.style.height = '34px';
+          const inner = document.createElement('div');
+          inner.className = 'steps';
+          for (let i = 0; i < 7; i++) {
+            const c = mix(cols[0], cols[1], i / 6, space);
+            const sp = document.createElement('span');
+            sp.style.background = C.rgbToHex(c);
+            sp.title = C.rgbToHex(c).toUpperCase() + ' · ' + C.describe(c, TV.lang);
+            sp.addEventListener('click', () => setColor({ ...c, a: 1 }, true));
+            inner.appendChild(sp);
+          }
+          st.appendChild(inner);
+          st.style.gridColumn = '1 / -1';
+          st.title = t('g_steps');
+          row.append(st);
+          row.querySelector('.grad-label').insertAdjacentHTML('beforeend', `<span>· ${esc(t('g_steps'))}</span>`);
+        }
+        return row;
+      }
+      function renderGradients() {
+        const box = $('#gradients');
+        box.innerHTML = '';
+        const base = palette[0].rgb;
+        const compH = (wheel.h + 180) % 360;
+        const comp = hsvToRgb(compH, wheel.s, wheel.v);
+        box.appendChild(gradRow(t('g_comp'), [base, comp], true));
+        const seen = new Set([C.rgbToHex(base), C.rgbToHex(comp)]);
+        palette.slice(1).forEach((p, i) => {
+          const hx = C.rgbToHex(p.rgb);
+          if (seen.has(hx)) return;
+          seen.add(hx);
+          if (box.children.length < 4) box.appendChild(gradRow(t('g_harm', i + 2), [base, p.rgb], false));
+        });
+        box.appendChild(gradRow(t('g_palette'), palette.map((p) => p.rgb), false));
+        $$('#interp button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.space === space)));
+      }
+      $$('#interp button').forEach((b) =>
+        b.addEventListener('click', () => {
+          space = b.dataset.space;
+          renderGradients();
+        }),
+      );
+      // #endregion
+
+      // #region Farbschwäche-Vorschau
+      function renderCvd() {
+        const box = $('#cvd');
+        box.innerHTML = '';
+        ['normal', ...C.TYPES].forEach((type) => {
+          const sim = palette.map((p) => C.simulate(p.rgb, type));
+          // Paare suchen, die für diese Sehweise zu ähnlich werden
+          let warn = null;
+          if (type !== 'normal') {
+            const labs = sim.map((c) => C.oklab(c));
+            const orig = palette.map((p) => C.oklab(p.rgb));
+            for (let i = 0; i < labs.length && !warn; i++)
+              for (let j = i + 1; j < labs.length; j++)
+                if (C.deltaE(labs[i], labs[j]) < 0.06 && C.deltaE(orig[i], orig[j]) >= 0.06) {
+                  warn = [i + 1, j + 1];
+                  break;
+                }
+          }
+          const row = document.createElement('div');
+          row.className = 'cvd-row';
+          row.innerHTML = `<div class="lbl">${esc(t('cvd_' + type))}<small>${esc(t('cvdSub_' + type))}</small></div>
+            <div class="cvd-sw">${sim.map((c, i) => `<span style="background:${C.rgbToHex(c)};color:${textOn(c)}" title="${esc(C.describe(c, TV.lang))}">${i + 1}</span>`).join('')}</div>
+            ${type === 'normal' ? '<span></span>' : `<span class="pill ${warn ? 'warn' : 'ok'}">${esc(warn ? t('tooSimilar', warn[0], warn[1]) : t('allDistinct'))}</span>`}`;
+          box.appendChild(row);
+        });
+      }
+      // #endregion
+
+      // #region Formate, Kontrast, Abstufungen
       const css = {
         hex: (c) => rgbToHex(c).toUpperCase(),
-        rgb: (c) =>
-          c.a < 1
-            ? `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${round(c.a, 2)})`
-            : `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`,
+        rgb: (c) => (c.a < 1 ? `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${round(c.a, 2)})` : `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`),
         hsl: (c) => {
           const h = rgbToHsl(c);
           const body = `${round(h.h)}, ${round(h.s)}%, ${round(h.l)}%`;
@@ -515,18 +1152,17 @@
         },
         hsv: (c) => {
           const h = rgbToHsv(c);
-          return `hsv(${round(h.h)}, ${round(h.s)}%, ${round(h.v)}%)`;
+          return `hsv(${round(h.h)}, ${round(h.s * 100)}%, ${round(h.v * 100)}%)`;
         },
         cmyk: (c) => {
           const k = rgbToCmyk(c);
           return `cmyk(${round(k.c)}%, ${round(k.m)}%, ${round(k.y)}%, ${round(k.k)}%)`;
         },
         oklch: (c) => {
-          const o = rgbToOklch(c);
-          return `oklch(${round(o.l, 1)}% ${round(o.c, 3)} ${round(o.h, 1)}${c.a < 1 ? ' / ' + round(c.a, 2) : ''})`;
+          const o = C.oklch(c);
+          return `oklch(${round(o.L * 100, 1)}% ${round(o.C, 3)} ${round(o.C < 0.0001 ? 0 : o.h, 1)}${c.a < 1 ? ' / ' + round(c.a, 2) : ''})`;
         },
       };
-
       function renderFormats() {
         const wrap = $('#formats');
         wrap.innerHTML = '';
@@ -545,96 +1181,65 @@
           wrap.append(kEl, vEl, b);
         });
       }
-
       function renderContrast() {
         const bg = parse($('#bg2').value);
         $('#bg2').classList.toggle('is-bad', !bg);
         if (!bg) return;
         const bgSolid = { ...bg, a: 1 };
-        const fg = over(color, bgSolid);
-        const r = contrast(fg, bgSolid);
+        const r = contrast(over(color, bgSolid), bgSolid);
         $('#ratio').textContent = r.toFixed(2);
-        const checks = [
-          ['AA', 4.5],
-          ['AA large', 3],
-          ['AAA', 7],
-          ['AAA large', 4.5],
-        ];
-        $('#checks').innerHTML = checks
-          .map(
-            ([n, min]) => `<span class="pill ${r >= min ? 'ok' : 'bad'}">${r >= min ? '✓' : '✕'} ${n}</span>`,
-          )
+        $('#checks').innerHTML = [['AA', 4.5], ['AA large', 3], ['AAA', 7], ['AAA large', 4.5]]
+          .map(([n, min]) => `<span class="pill ${r >= min ? 'ok' : 'bad'}">${r >= min ? '✓' : '✕'} ${n}</span>`)
           .join('');
-        const p = $('#preview');
-        p.style.background = rgbToHex(bgSolid);
-        p.style.color = css.rgb(color);
+        $('#preview').style.background = rgbToHex(bgSolid);
+        $('#preview').style.color = css.rgb(color);
       }
-
-      function chip(c, opts = {}) {
-        const el = document.createElement('button');
-        el.className = 'chip' + (opts.current ? ' current' : '');
-        const hex = rgbToHex({ ...c, a: 1 }).toUpperCase();
-        el.style.background = hex;
-        el.style.color = luminance(c) > 0.45 ? '#111' : '#fff';
-        el.textContent = hex;
-        el.title = hex;
-        el.addEventListener('click', () => setColor({ ...c, a: color.a }, true));
-        return el;
-      }
-
       function scaleColors() {
         const h = rgbToHsl(color);
-        const steps = [97, 93, 85, 74, 62, 50, 40, 31, 23, 16, 10];
-        return steps.map((l) => hslToRgb({ h: h.h, s: h.s, l }));
+        return [97, 93, 85, 74, 62, 50, 40, 31, 23, 16, 10].map((l) => hslToRgb({ h: h.h, s: h.s, l }));
       }
-
       function renderScale() {
         const box = $('#scale');
         box.innerHTML = '';
         const own = rgbToHex({ ...color, a: 1 });
-        scaleColors().forEach((c) => box.appendChild(chip(c, { current: rgbToHex(c) === own })));
-      }
-
-      function renderHarmonies() {
-        const h = rgbToHsl(color);
-        const rot = (deg) => hslToRgb({ h: h.h + deg, s: h.s, l: h.l });
-        const groups = [
-          ['comp', [0, 180]],
-          ['analog', [-30, 0, 30]],
-          ['triad', [0, 120, 240]],
-          ['split', [0, 150, 210]],
-          ['tetrad', [0, 90, 180, 270]],
-        ];
-        const box = $('#harmonies');
-        box.innerHTML = '';
-        groups.forEach(([key, degs]) => {
-          const g = document.createElement('div');
-          g.className = 'harm-group';
-          g.innerHTML = `<div class="lbl">${esc(t(key))}</div>`;
-          const row = document.createElement('div');
-          row.className = 'palette harm';
-          degs.forEach((d) => row.appendChild(chip(rot(d), { current: d === 0 })));
-          g.appendChild(row);
-          box.appendChild(g);
+        scaleColors().forEach((c) => {
+          const el = document.createElement('button');
+          const hex = rgbToHex(c).toUpperCase();
+          el.className = 'chip' + (rgbToHex(c) === own ? ' current' : '');
+          el.style.background = hex;
+          el.style.color = textOn(c);
+          el.textContent = hex;
+          el.title = hex + ' · ' + C.describe(c, TV.lang);
+          el.addEventListener('click', () => setColor({ ...c, a: color.a }, true));
+          box.appendChild(el);
         });
       }
+      // #endregion
 
+      // #region Ablauf
       function render() {
         $('#swatchFill').style.background = css.rgb(color);
         $('#native').value = rgbToHex({ ...color, a: 1 });
-        alphaEl.value = Math.round(color.a * 100);
+        $('#alpha').value = Math.round(color.a * 100);
         $('#alphaVal').textContent = Math.round(color.a * 100) + '%';
+        renderName();
         renderFormats();
         renderContrast();
         renderScale();
-        renderHarmonies();
+        renderWheelAll();
         try {
           history.replaceState(null, '', '#' + rgbToHex(color).slice(1));
         } catch (e) {}
       }
 
-      function setColor(c, writeInput) {
+      // wheelState: vom Rad gesetzt (Farbton bleibt erhalten), sonst aus der Farbe ableiten
+      function setColor(c, writeInput, wheelState) {
         color = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+        if (wheelState) wheel = wheelState;
+        else {
+          const hsv = rgbToHsv(color);
+          wheel = { h: hsv.s > 0.01 ? hsv.h : wheel.h, s: hsv.s, v: hsv.v };
+        }
         if (writeInput) input.value = css.hex(color);
         input.classList.remove('is-bad');
         $('#msg').textContent = '';
@@ -652,16 +1257,20 @@
         setColor(c, false);
       });
       $('#native').addEventListener('input', (e) => setColor({ ...parse(e.target.value), a: color.a }, true));
-      alphaEl.addEventListener('input', () => {
-        color.a = alphaEl.value / 100;
+      $('#alpha').addEventListener('input', () => {
+        color.a = $('#alpha').value / 100;
         input.value = css.hex(color);
         render();
       });
-      $('#bg2').addEventListener('input', renderContrast);
+      $('#bg2').addEventListener('input', () => {
+        $('#bg2').dataset.touched = '1';
+        renderContrast();
+      });
       $('#swap').addEventListener('click', () => {
         const bg = parse($('#bg2').value);
         if (!bg) return;
         $('#bg2').value = css.hex({ ...color, a: 1 });
+        $('#bg2').dataset.touched = '1';
         setColor({ ...bg, a: 1 }, true);
       });
       $('#random').addEventListener('click', () => {
@@ -670,38 +1279,39 @@
         setColor({ r: rnd[0], g: rnd[1], b: rnd[2], a: 1 }, true);
       });
       $('#fromTheme').addEventListener('click', () => {
-        const acc = getComputedStyle(document.documentElement).getPropertyValue('--accent');
-        const c = parse(acc);
+        const c = parse(getComputedStyle(document.documentElement).getPropertyValue('--accent'));
         if (c) setColor(c, true);
       });
       $('#copyScale').addEventListener('click', () => {
         const names = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-        const lines = scaleColors().map((c, i) => `  --color-${names[i]}: ${rgbToHex(c)};`);
-        copy(':root {\n' + lines.join('\n') + '\n}', 'CSS');
+        copy(':root {\n' + scaleColors().map((c, i) => `  --color-${names[i]}: ${rgbToHex(c)};`).join('\n') + '\n}', 'CSS');
+      });
+      document.addEventListener('tv:theme', () => {
+        if ($('#bg2').dataset.touched === '1') return;
+        $('#bg2').value = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+        renderContrast();
       });
 
-      // Theme-Wechsel -> Kontrast-Hintergrund mitziehen, falls nicht verändert
-      document.addEventListener('tv:theme', () => {
-        const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-        if ($('#bg2').dataset.touched !== '1') {
-          $('#bg2').value = bg;
-          renderContrast();
-        }
-      });
-      $('#bg2').addEventListener('input', () => ($('#bg2').dataset.touched = '1'));
+      // Hash vor dem ersten Rendern lesen – render() schreibt ihn sonst sofort neu
+      const fromHash = parse(decodeURIComponent(location.hash.slice(1)));
+      if (fromHash) color = fromHash;
+
+      try {
+        const saved = localStorage.getItem('tv-color-rule');
+        if (saved in RULES) rule = saved;
+      } catch (e) {}
 
       TV.init({
         glyph: '#',
         strings: STRINGS,
         onLang: () => {
-          renderFormats();
-          renderHarmonies();
+          renderRules();
+          render();
         },
       });
 
-      // Start: Farbe aus URL-Hash (#ff8800) oder Default
-      const fromHash = parse(location.hash.slice(1));
       setColor(fromHash || parse(input.value), true);
+      C.loadNames().then(renderName).catch(() => {});
       input.focus();
       // #endregion
     </script>

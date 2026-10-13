@@ -189,7 +189,7 @@
     // Copy-Buttons: <button data-copy="#selector">
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-copy]');
-      if (!btn) return;
+      if (!btn || !btn.dataset.copy) return;
       const src = $(btn.dataset.copy);
       if (!src) return;
       const text = 'value' in src && src.tagName !== 'BUTTON' ? src.value : src.textContent;

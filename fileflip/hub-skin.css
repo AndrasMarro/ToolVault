@@ -1,0 +1,268 @@
+/* FileFlip · Hub-Skin
+   Nicht-destruktives Override (VibeCurb visual-redesign): wird NACH dem
+   eigenen <style> geladen und bringt FileFlip in die Formensprache des
+   ToolVault-Hubs. Entfernen dieser Datei + tv.css stellt das alte Aussehen
+   wieder her. Die JavaScript-Logik von FileFlip bleibt unverändert. */
+
+/* #region Tokens: FileFlip-Variablen auf Hub-Themes abbilden */
+:root[data-theme] {
+  --accent-hover: color-mix(in srgb, var(--accent) 86%, var(--text));
+  --success: var(--ok);
+  --success-soft: color-mix(in srgb, var(--ok) 14%, transparent);
+  --danger: var(--bad);
+  --danger-soft: color-mix(in srgb, var(--bad) 14%, transparent);
+  --shadow: none;
+  --gradient-a: transparent;
+  --gradient-b: transparent;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* #endregion */
+
+/* #region Grundlagen */
+body {
+  background: var(--bg);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+.container {
+  max-width: 1000px;
+  padding: 28px 24px 64px;
+}
+/* #endregion */
+
+/* Alte header-Regel (Trennlinie, Abstände) für die Hub-Kopfzeile neutralisieren */
+header.topbar {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 44px;
+}
+
+/* #region Tabs → Hub-Segmente */
+nav.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border-radius: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: visible;
+}
+.tab,
+.tab-link {
+  flex: 0 1 auto;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  padding: 8px 13px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  transition:
+    color 0.2s var(--ease),
+    background 0.2s var(--ease);
+}
+.tab:hover,
+.tab-link:hover {
+  color: var(--text);
+}
+.tab.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+.tab-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  border: 1px dashed var(--border);
+}
+.tab-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* #endregion */
+
+/* #region Karten */
+.tool-grid {
+  gap: 14px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  transition: border-color 0.25s var(--ease);
+}
+.card:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+.card h2 {
+  font-family: var(--sans);
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.card .desc {
+  font-size: 0.86rem;
+  margin-bottom: 16px;
+  max-width: 60ch;
+}
+/* #endregion */
+
+/* #region Dropzone + Dateiliste */
+.dropzone {
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  padding: 28px 16px;
+  transition:
+    border-color 0.2s var(--ease),
+    background 0.2s var(--ease);
+}
+.dropzone-icon {
+  opacity: 0.85;
+}
+.dropzone-hint {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+.file-item {
+  background: var(--bg);
+  border-radius: 9px;
+  font-size: 0.84rem;
+}
+.file-size {
+  font-family: var(--mono);
+}
+/* #endregion */
+
+/* #region Buttons + Formular */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  padding: 9px 15px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition:
+    filter 0.2s var(--ease),
+    border-color 0.2s var(--ease),
+    color 0.2s var(--ease),
+    transform 0.1s var(--ease);
+}
+.btn:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.btn.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 500;
+}
+.btn.secondary:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent);
+  filter: none;
+}
+.option label {
+  font-size: 0.78rem;
+}
+select,
+.options input {
+  width: auto;
+  background: var(--bg);
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* #endregion */
+
+/* #region Status + Fortschritt */
+.status {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  border-radius: 9px;
+  border: 1px solid transparent;
+}
+.status.success {
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+}
+.status.error {
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+}
+.progress {
+  height: 6px;
+  border-radius: 4px;
+}
+/* #endregion */
+
+/* #region Fusszeile wie im Hub */
+footer {
+  text-align: left;
+  margin-top: 56px;
+  padding-top: 20px;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+footer a:hover {
+  color: var(--accent);
+}
+footer .privacy-note {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+}
+/* #endregion */
+
+/* #region Sprachumschalter im Hub-Stil (FileFlip behält seine eigene Logik) */
+.lang-switch {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.lang-btn {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 400;
+  padding: 2px;
+  border-bottom: 1px solid transparent;
+}
+.lang-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.lang-btn:hover {
+  color: var(--accent);
+}
+/* #endregion */
+
+@media (max-width: 540px) {
+  .container {
+    padding: 22px 16px 48px;
+  }
+  .tab-link {
+    margin-left: 0;
+  }
+}

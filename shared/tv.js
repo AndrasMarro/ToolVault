@@ -5,6 +5,7 @@
 
    Verwendung in einem Tool:
      TV.init({ glyph: '#', strings: { de: {...}, en: {...} }, onLang: (lang) => {...} });
+     TV.init({ glyph: '↺', lang: false })   -> nur Themes/Favicon, Sprache macht das Tool selbst
      TV.t('key')   -> Text in aktueller Sprache
    Attribute: data-i18n (Text), data-i18n-html (HTML), data-i18n-ph (Placeholder),
               data-i18n-title (title + aria-label). */
@@ -182,9 +183,13 @@
     }
     setTheme(document.documentElement.getAttribute('data-theme') || DEFAULT_THEME);
 
-    // Sprache
-    $$('#lang button').forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)));
-    applyLang(store.get('tv-lang', sessionStorage) || DEFAULT_LANG);
+    // Sprache (lang: false = das Tool hat eine eigene Sprachsteuerung)
+    if (opts.lang !== false) {
+      $$('#lang button').forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+      applyLang(store.get('tv-lang', sessionStorage) || DEFAULT_LANG);
+    } else {
+      LANG = document.documentElement.lang || DEFAULT_LANG;
+    }
 
     // Copy-Buttons: <button data-copy="#selector">
     document.addEventListener('click', (e) => {

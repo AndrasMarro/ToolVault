@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Convert Unix timestamps to dates and back across time zones, and calculate date differences, business days and date offsets."
+    />
+    <title>Time &amp; Date · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <script src="../shared/tv.js"></script>
+
+    <style>
+      .now {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+      .now .stat {
+        cursor: pointer;
+        transition: border-color 0.15s ease;
+      }
+      .now .stat:hover {
+        border-color: var(--accent);
+      }
+      .now .n {
+        font-size: 1rem;
+        font-variant-numeric: tabular-nums;
+        word-break: break-all;
+      }
+      .zones {
+        display: grid;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .zone {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 10px;
+        align-items: center;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 7px 10px;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+      }
+      .zone .z {
+        color: var(--text-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .zone .off {
+        color: var(--accent);
+        font-size: 0.74rem;
+      }
+      .zone button {
+        background: none;
+        border: 0;
+        color: var(--text-muted);
+        cursor: pointer;
+        font: inherit;
+        padding: 0 2px;
+      }
+      .zone button:hover {
+        color: var(--bad);
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 10px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      .grid2 > *,
+      .grid3 > * {
+        min-width: 0;
+      }
+      .big {
+        font-family: var(--mono);
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent);
+        word-break: break-all;
+      }
+      @media (max-width: 560px) {
+        .grid2,
+        .grid3 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">time</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <!-- Jetzt -->
+      <div class="box">
+        <h2 class="box-title">
+          <span data-i18n="now"></span>
+          <button class="btn sm" id="pause" data-i18n="pause"></button>
+        </h2>
+        <div class="now" id="now"></div>
+      </div>
+
+      <div class="cols" style="margin-top: 14px">
+        <!-- Timestamp -> Datum -->
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="tsToDate"></span><span class="pill" id="unit"></span></h2>
+          <div class="row">
+            <input type="text" id="ts" spellcheck="false" autocomplete="off" inputmode="numeric" style="flex: 1" />
+            <button class="btn sm" id="tsNow" data-i18n="nowBtn"></button>
+          </div>
+          <div class="kv" id="tsOut" style="margin-top: 14px"></div>
+        </div>
+
+        <!-- Datum -> Timestamp -->
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="dateToTs"></span></h2>
+          <div class="stack">
+            <label class="field"><span data-i18n="dateTime"></span><input type="datetime-local" id="dt" step="1" /></label>
+            <label class="field"><span data-i18n="zone"></span><select id="dtZone"></select></label>
+          </div>
+          <div class="kv" id="dtOut" style="margin-top: 14px"></div>
+        </div>
+      </div>
+
+      <!-- Zeitzonen -->
+      <div class="box">
+        <h2 class="box-title"><span data-i18n="zones"></span><span class="muted" id="zonesFor" style="text-transform: none; letter-spacing: 0"></span></h2>
+        <div class="row">
+          <input type="text" id="zoneAdd" list="zoneList" spellcheck="false" data-i18n-ph="addZone" style="flex: 1" />
+          <datalist id="zoneList"></datalist>
+          <button class="btn sm" id="zoneAddBtn">+</button>
+        </div>
+        <div class="zones" id="zones"></div>
+      </div>
+
+      <!-- Differenz + Addieren -->
+      <div class="cols">
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="diff"></span></h2>
+          <div class="grid2">
+            <label class="field"><span data-i18n="from"></span><input type="datetime-local" id="d1" /></label>
+            <label class="field"><span data-i18n="to"></span><input type="datetime-local" id="d2" /></label>
+          </div>
+          <div class="big" id="diffBig" style="margin-top: 14px"></div>
+          <div class="kv" id="diffOut" style="margin-top: 10px"></div>
+        </div>
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="add"></span></h2>
+          <label class="field"><span data-i18n="start"></span><input type="datetime-local" id="a1" /></label>
+          <div class="grid3" style="margin-top: 10px">
+            <select id="aSign" aria-label="+/-">
+              <option value="1">+</option>
+              <option value="-1">−</option>
+            </select>
+            <input type="number" id="aN" value="30" aria-label="Amount" />
+            <select id="aUnit" aria-label="Unit"></select>
+          </div>
+          <div class="big" id="addBig" style="margin-top: 14px"></div>
+          <div class="kv" id="addOut" style="margin-top: 10px"></div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Time &amp; Date v1.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script>
+      const STRINGS = {
+        de: {
+          pageTitle: 'Zeit & Datum',
+          kicker: '// zeit & datum',
+          title: 'Zeitstempel und Daten <span class="accent">umrechnen</span>.',
+          lead: 'Unix-Zeit in lesbare Daten und zurück, über Zeitzonen hinweg. Dazu Differenzen, Arbeitstage und Datumsrechnen.',
+          now: 'Jetzt',
+          pause: '❚❚ Pause',
+          resume: '▶ Weiter',
+          nowBtn: 'Jetzt',
+          tsToDate: 'Zeitstempel → Datum',
+          dateToTs: 'Datum → Zeitstempel',
+          dateTime: 'Datum & Uhrzeit',
+          zone: 'Zeitzone',
+          zones: 'Zeitzonen',
+          addZone: 'Zeitzone hinzufügen, z. B. Asia/Tokyo',
+          diff: 'Differenz',
+          from: 'Von',
+          to: 'Bis',
+          add: 'Datum rechnen',
+          start: 'Start',
+          invalid: 'Ungültiger Wert',
+          localZone: 'Lokal',
+          k_utc: 'UTC',
+          k_local: 'Lokal',
+          k_iso: 'ISO 8601',
+          k_rfc: 'RFC 2822',
+          k_rel: 'Relativ',
+          k_week: 'KW / Tag',
+          k_s: 'Sekunden',
+          k_ms: 'Millisek.',
+          k_days: 'Tage',
+          k_weeks: 'Wochen',
+          k_hours: 'Stunden',
+          k_minutes: 'Minuten',
+          k_work: 'Arbeitstage',
+          k_ymd: 'J / M / T',
+          k_weekday: 'Wochentag',
+          weekDay: (w, d) => `KW ${w} · Tag ${d} im Jahr`,
+          ymd: (y, m, d) => `${y} J, ${m} M, ${d} T`,
+          units: { s: 'Sekunden', ms: 'Millisekunden', us: 'Mikrosekunden', ns: 'Nanosekunden' },
+          addUnits: { minutes: 'Minuten', hours: 'Stunden', days: 'Tage', workdays: 'Arbeitstage', weeks: 'Wochen', months: 'Monate', years: 'Jahre' },
+          copied: 'kopiert',
+          local: 'läuft lokal im Browser',
+          workNote: 'Mo–Fr, ohne Feiertage',
+        },
+        en: {
+          pageTitle: 'Time & Date',
+          kicker: '// time & date',
+          title: 'Convert timestamps and <span class="accent">dates</span>.',
+          lead: 'Unix time to readable dates and back, across time zones. Plus differences, business days and date arithmetic.',
+          now: 'Now',
+          pause: '❚❚ Pause',
+          resume: '▶ Resume',
+          nowBtn: 'Now',
+          tsToDate: 'Timestamp → date',
+          dateToTs: 'Date → timestamp',
+          dateTime: 'Date & time',
+          zone: 'Time zone',
+          zones: 'Time zones',
+          addZone: 'Add a time zone, e.g. Asia/Tokyo',
+          diff: 'Difference',
+          from: 'From',
+          to: 'To',
+          add: 'Date arithmetic',
+          start: 'Start',
+          invalid: 'Invalid value',
+          localZone: 'Local',
+          k_utc: 'UTC',
+          k_local: 'Local',
+          k_iso: 'ISO 8601',
+          k_rfc: 'RFC 2822',
+          k_rel: 'Relative',
+          k_week: 'Week / day',
+          k_s: 'Seconds',
+          k_ms: 'Millisec.',
+          k_days: 'Days',
+          k_weeks: 'Weeks',
+          k_hours: 'Hours',
+          k_minutes: 'Minutes',
+          k_work: 'Business days',
+          k_ymd: 'Y / M / D',
+          k_weekday: 'Weekday',
+          weekDay: (w, d) => `Week ${w} · day ${d} of year`,
+          ymd: (y, m, d) => `${y} y, ${m} m, ${d} d`,
+          units: { s: 'seconds', ms: 'milliseconds', us: 'microseconds', ns: 'nanoseconds' },
+          addUnits: { minutes: 'minutes', hours: 'hours', days: 'days', workdays: 'business days', weeks: 'weeks', months: 'months', years: 'years' },
+          copied: 'copied',
+          local: 'runs locally in your browser',
+          workNote: 'Mon–Fri, excluding holidays',
+        },
+      };
+
+      const { $, $$, t, esc, copy } = TV;
+      const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const locale = () => (TV.lang === 'de' ? 'de-CH' : 'en-GB');
+      const pad = (n, w = 2) => String(n).padStart(w, '0');
+
+      // #region Zeitzonen-Helfer
+      // Offset einer Zone zu einem Zeitpunkt (ms), positiv = östlich von UTC
+      function tzOffset(ms, tz) {
+        const p = Object.fromEntries(
+          new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            hourCycle: 'h23',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+            .formatToParts(new Date(ms))
+            .map((x) => [x.type, x.value]),
+        );
+        const asUtc = Date.UTC(+p.year, p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
+        return asUtc - Math.floor(ms / 1000) * 1000;
+      }
+      // Wanduhr-Zeit in Zone -> UTC-ms (mit DST-Korrektur)
+      function zonedToUtc(y, mo, d, h, mi, s, tz) {
+        const guess = Date.UTC(y, mo - 1, d, h, mi, s);
+        let ms = guess - tzOffset(guess, tz);
+        const off2 = tzOffset(ms, tz);
+        if (guess - off2 !== ms) ms = guess - off2;
+        return ms;
+      }
+      const fmtOffset = (min) => {
+        const sign = min >= 0 ? '+' : '−';
+        const a = Math.abs(min);
+        return `UTC${sign}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+      };
+      const fmtIn = (ms, tz, opts = {}) =>
+        new Intl.DateTimeFormat(locale(), {
+          timeZone: tz,
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          ...opts,
+        }).format(new Date(ms));
+      function isoIn(ms, tz) {
+        const off = Math.round(tzOffset(ms, tz) / 60000);
+        const d = new Date(ms + off * 60000);
+        const base = d.toISOString().slice(0, 19);
+        return base + (off === 0 ? 'Z' : fmtOffset(off).slice(3).replace('−', '-'));
+      }
+      // #endregion
+
+      // #region Kalender-Helfer
+      function isoWeek(d) {
+        const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const day = x.getUTCDay() || 7;
+        x.setUTCDate(x.getUTCDate() + 4 - day);
+        const y0 = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+        return Math.ceil(((x - y0) / 86400000 + 1) / 7);
+      }
+      const dayOfYear = (d) => Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(d.getFullYear(), 0, 0)) / 86400000);
+      function relative(ms) {
+        const rtf = new Intl.RelativeTimeFormat(locale(), { numeric: 'auto' });
+        const diff = (ms - Date.now()) / 1000;
+        const a = Math.abs(diff);
+        const units = [
+          [60, 'second', 1],
+          [3600, 'minute', 60],
+          [86400, 'hour', 3600],
+          [86400 * 30, 'day', 86400],
+          [86400 * 365, 'month', 86400 * 30.44],
+          [Infinity, 'year', 86400 * 365.25],
+        ];
+        for (const [lim, u, div] of units) if (a < lim) return rtf.format(Math.round(diff / div), u);
+      }
+      function workdaysBetween(a, b) {
+        let sign = 1;
+        if (b < a) {
+          [a, b] = [b, a];
+          sign = -1;
+        }
+        const start = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+        const end = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+        const days = Math.round((end - start) / 86400000);
+        const full = Math.floor(days / 7);
+        let count = full * 5;
+        let wd = (start.getDay() + full * 7) % 7;
+        for (let i = full * 7; i < days; i++) {
+          if (wd !== 0 && wd !== 6) count++;
+          wd = (wd + 1) % 7;
+        }
+        return count * sign;
+      }
+      // Monate addieren, Monatsende abfangen: 31. Jan + 1 Monat = 28./29. Feb
+      function addMonths(date, n) {
+        const d = new Date(date);
+        const day = d.getDate();
+        d.setDate(1);
+        d.setMonth(d.getMonth() + n);
+        d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+        return d;
+      }
+      function ymdDiff(a, b) {
+        let sign = '';
+        if (b < a) {
+          [a, b] = [b, a];
+          sign = '−';
+        }
+        let months = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+        let anchor = addMonths(a, months);
+        if (anchor > b) anchor = addMonths(a, --months);
+        // Kalendertage zählen (DST-sicher über UTC-Datum)
+        const utc = (d) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+        let days = Math.round((utc(b) - utc(anchor)) / 86400000);
+        if (b.getHours() * 60 + b.getMinutes() < anchor.getHours() * 60 + anchor.getMinutes()) days--;
+        return sign + t('ymd', Math.floor(months / 12), months % 12, days);
+      }
+      // datetime-local <-> Date (lokal)
+      const toLocalInput = (d, sec) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}${sec ? ':' + pad(d.getSeconds()) : ''}`;
+      const fromLocalInput = (v) => (v ? new Date(v) : null);
+      // #endregion
+
+      // #region Ausgabe-Helfer
+      function kvRows(el, rows) {
+        el.innerHTML = '';
+        rows.forEach(([k, v]) => {
+          const kEl = document.createElement('span');
+          kEl.className = 'k';
+          kEl.textContent = k;
+          const vEl = document.createElement('span');
+          vEl.className = 'v';
+          vEl.textContent = v;
+          const b = document.createElement('button');
+          b.className = 'btn sm';
+          b.textContent = '⧉';
+          b.title = 'Copy';
+          b.addEventListener('click', () => copy(String(v), k));
+          el.append(kEl, vEl, b);
+        });
+      }
+      // #endregion
+
+      // #region Jetzt-Leiste
+      let paused = false;
+      function tickNow() {
+        if (paused) return;
+        const ms = Date.now();
+        const items = [
+          [Math.floor(ms / 1000), 'Unix (s)'],
+          [ms, 'Unix (ms)'],
+          [new Date(ms).toISOString(), 'ISO 8601 UTC'],
+          [fmtIn(ms, LOCAL_TZ, { weekday: undefined }), LOCAL_TZ],
+        ];
+        $('#now').innerHTML = items
+          .map(([v, l]) => `<div class="stat" data-v="${esc(v)}"><div class="n">${esc(v)}</div><div class="l">${esc(l)}</div></div>`)
+          .join('');
+      }
+      $('#now').addEventListener('click', (e) => {
+        const s = e.target.closest('[data-v]');
+        if (s) copy(s.dataset.v);
+      });
+      $('#pause').addEventListener('click', () => {
+        paused = !paused;
+        $('#pause').dataset.i18n = paused ? 'resume' : 'pause';
+        $('#pause').textContent = t($('#pause').dataset.i18n);
+        tickNow();
+      });
+      setInterval(tickNow, 1000);
+      // #endregion
+
+      // #region Timestamp -> Datum
+      let focusMs = Date.now(); // Zeitpunkt für die Zeitzonen-Liste
+
+      function parseTs(raw) {
+        const s = raw.trim().replace(/[_'\s]/g, '');
+        if (!/^-?\d+(\.\d+)?$/.test(s)) {
+          // Auch ISO-/Datumsstrings akzeptieren
+          const d = Date.parse(raw);
+          return isNaN(d) ? null : { ms: d, unit: 'ISO' };
+        }
+        const n = Number(s);
+        const digits = s.replace(/^-/, '').split('.')[0].length;
+        if (digits <= 11) return { ms: n * 1000, unit: 's' };
+        if (digits <= 14) return { ms: n, unit: 'ms' };
+        if (digits <= 17) return { ms: n / 1000, unit: 'us' };
+        return { ms: n / 1e6, unit: 'ns' };
+      }
+
+      function renderTs() {
+        const r = parseTs($('#ts').value);
+        $('#ts').classList.toggle('is-bad', !r && !!$('#ts').value.trim());
+        if (!r || isNaN(new Date(r.ms))) {
+          $('#tsOut').innerHTML = $('#ts').value.trim() ? `<span class="muted">${esc(t('invalid'))}</span>` : '';
+          $('#unit').textContent = '';
+          return;
+        }
+        $('#unit').textContent = r.unit === 'ISO' ? 'ISO' : t('units')[r.unit];
+        const d = new Date(r.ms);
+        focusMs = r.ms;
+        kvRows($('#tsOut'), [
+          [t('k_utc'), fmtIn(r.ms, 'UTC')],
+          [t('k_local'), fmtIn(r.ms, LOCAL_TZ)],
+          [t('k_iso'), d.toISOString()],
+          [t('k_rfc'), d.toUTCString()],
+          [t('k_rel'), relative(r.ms)],
+          [t('k_week'), t('weekDay', isoWeek(d), dayOfYear(d))],
+          [t('k_s'), Math.floor(r.ms / 1000)],
+          [t('k_ms'), Math.round(r.ms)],
+        ]);
+        renderZones();
+      }
+      $('#ts').addEventListener('input', renderTs);
+      $('#tsNow').addEventListener('click', () => {
+        $('#ts').value = Math.floor(Date.now() / 1000);
+        renderTs();
+      });
+      // #endregion
+
+      // #region Datum -> Timestamp
+      const ALL_ZONES = (Intl.supportedValuesOf && Intl.supportedValuesOf('timeZone')) || [LOCAL_TZ, 'UTC', 'Europe/Zurich', 'Europe/London', 'America/New_York', 'Asia/Tokyo'];
+      if (!ALL_ZONES.includes('UTC')) ALL_ZONES.unshift('UTC');
+
+      function fillZoneSelect() {
+        const sel = $('#dtZone');
+        const keep = sel.value || LOCAL_TZ;
+        sel.innerHTML = '';
+        const first = [LOCAL_TZ, 'UTC'];
+        [...new Set([...first, ...ALL_ZONES])].forEach((z) => {
+          const o = document.createElement('option');
+          o.value = z;
+          o.textContent = z === LOCAL_TZ ? `${z} (${t('localZone')})` : z;
+          sel.appendChild(o);
+        });
+        sel.value = keep;
+        $('#zoneList').innerHTML = ALL_ZONES.map((z) => `<option value="${esc(z)}">`).join('');
+      }
+
+      function renderDt() {
+        const v = $('#dt').value;
+        if (!v) return ($('#dtOut').innerHTML = '');
+        const [date, time = '00:00:00'] = v.split('T');
+        const [y, mo, d] = date.split('-').map(Number);
+        const [h, mi, s = 0] = time.split(':').map(Number);
+        const tz = $('#dtZone').value;
+        const ms = zonedToUtc(y, mo, d, h, mi, s, tz);
+        focusMs = ms;
+        kvRows($('#dtOut'), [
+          [t('k_s'), Math.floor(ms / 1000)],
+          [t('k_ms'), ms],
+          [t('k_iso'), new Date(ms).toISOString()],
+          ['ISO ' + tz.split('/').pop().replace(/_/g, ' '), isoIn(ms, tz)],
+          [t('k_local'), fmtIn(ms, LOCAL_TZ)],
+        ]);
+        renderZones();
+      }
+      $('#dt').addEventListener('input', renderDt);
+      $('#dtZone').addEventListener('change', renderDt);
+      // #endregion
+
+      // #region Zeitzonen-Liste
+      const DEFAULT_ZONES = ['UTC', 'Europe/Zurich', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney'];
+      let zones;
+      try {
+        zones = JSON.parse(localStorage.getItem('tv-time-zones')) || DEFAULT_ZONES;
+      } catch (e) {
+        zones = DEFAULT_ZONES;
+      }
+      const saveZones = () => {
+        try {
+          localStorage.setItem('tv-time-zones', JSON.stringify(zones));
+        } catch (e) {}
+      };
+
+      function renderZones() {
+        $('#zonesFor').textContent = '@ ' + new Date(focusMs).toISOString().replace('.000', '');
+        const box = $('#zones');
+        box.innerHTML = '';
+        zones.forEach((z, i) => {
+          let label, off;
+          try {
+            label = fmtIn(focusMs, z);
+            off = fmtOffset(Math.round(tzOffset(focusMs, z) / 60000));
+          } catch (e) {
+            return;
+          }
+          const row = document.createElement('div');
+          row.className = 'zone';
+          row.innerHTML = `<span><span class="z">${esc(z.replace(/_/g, ' '))}${z === LOCAL_TZ ? ' ★' : ''}</span><br>${esc(label)}</span><span class="off">${off}</span>`;
+          const rm = document.createElement('button');
+          rm.textContent = '✕';
+          rm.title = 'Remove';
+          rm.addEventListener('click', () => {
+            zones.splice(i, 1);
+            saveZones();
+            renderZones();
+          });
+          row.appendChild(rm);
+          box.appendChild(row);
+        });
+      }
+      function addZone() {
+        const v = $('#zoneAdd').value.trim();
+        const match = ALL_ZONES.find((z) => z.toLowerCase() === v.toLowerCase().replace(/ /g, '_')) || ALL_ZONES.find((z) => z.toLowerCase().includes(v.toLowerCase().replace(/ /g, '_')));
+        if (!v || !match) {
+          $('#zoneAdd').classList.add('is-bad');
+          return;
+        }
+        $('#zoneAdd').classList.remove('is-bad');
+        if (!zones.includes(match)) zones.push(match);
+        $('#zoneAdd').value = '';
+        saveZones();
+        renderZones();
+      }
+      $('#zoneAddBtn').addEventListener('click', addZone);
+      $('#zoneAdd').addEventListener('keydown', (e) => e.key === 'Enter' && addZone());
+      $('#zoneAdd').addEventListener('input', () => $('#zoneAdd').classList.remove('is-bad'));
+      // #endregion
+
+      // #region Differenz
+      function renderDiff() {
+        const a = fromLocalInput($('#d1').value);
+        const b = fromLocalInput($('#d2').value);
+        if (!a || !b) return;
+        const ms = b - a;
+        const days = ms / 86400000;
+        const fmt = (n, d = 2) => Number(n.toFixed(d)).toLocaleString(locale());
+        $('#diffBig').textContent = `${fmt(days)} ${t('k_days')}`;
+        kvRows($('#diffOut'), [
+          [t('k_ymd'), ymdDiff(a, b)],
+          [t('k_weeks'), fmt(days / 7)],
+          [t('k_work'), `${workdaysBetween(a, b)} (${t('workNote')})`],
+          [t('k_hours'), fmt(ms / 3600000)],
+          [t('k_minutes'), fmt(ms / 60000, 0)],
+          [t('k_s'), fmt(ms / 1000, 0)],
+        ]);
+      }
+      ['#d1', '#d2'].forEach((s) => $(s).addEventListener('input', renderDiff));
+      // #endregion
+
+      // #region Addieren
+      function fillUnits() {
+        const sel = $('#aUnit');
+        const keep = sel.value || 'days';
+        sel.innerHTML = Object.entries(t('addUnits'))
+          .map(([k, v]) => `<option value="${k}">${esc(v)}</option>`)
+          .join('');
+        sel.value = keep;
+      }
+      function renderAdd() {
+        const start = fromLocalInput($('#a1').value);
+        const n = Math.trunc(Number($('#aN').value)) * Number($('#aSign').value);
+        if (!start || isNaN(n)) return;
+        const d = new Date(start);
+        const unit = $('#aUnit').value;
+        if (unit === 'minutes') d.setMinutes(d.getMinutes() + n);
+        else if (unit === 'hours') d.setHours(d.getHours() + n);
+        else if (unit === 'days') d.setDate(d.getDate() + n);
+        else if (unit === 'weeks') d.setDate(d.getDate() + n * 7);
+        else if (unit === 'months' || unit === 'years') d.setTime(addMonths(d, unit === 'years' ? n * 12 : n));
+        else if (unit === 'workdays') {
+          let left = Math.abs(n);
+          const step = Math.sign(n);
+          while (left > 0) {
+            d.setDate(d.getDate() + step);
+            if (d.getDay() !== 0 && d.getDay() !== 6) left--;
+          }
+        }
+        $('#addBig').textContent = fmtIn(+d, LOCAL_TZ, { second: undefined });
+        kvRows($('#addOut'), [
+          [t('k_iso'), toLocalInput(d, false).replace('T', ' ')],
+          [t('k_weekday'), d.toLocaleDateString(locale(), { weekday: 'long' })],
+          [t('k_week'), t('weekDay', isoWeek(d), dayOfYear(d))],
+          [t('k_s'), Math.floor(d / 1000)],
+        ]);
+      }
+      ['#a1', '#aN', '#aSign', '#aUnit'].forEach((s) => $(s).addEventListener('input', renderAdd));
+      // #endregion
+
+      // #region Start
+      const now = new Date();
+      now.setMilliseconds(0);
+      $('#ts').value = Math.floor(now / 1000);
+      $('#dt').value = toLocalInput(now, true);
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      $('#d1').value = toLocalInput(startOfDay);
+      $('#d2').value = toLocalInput(new Date(now.getFullYear(), 11, 31, 23, 59));
+      $('#a1').value = toLocalInput(startOfDay);
+
+      TV.init({
+        glyph: 'ts',
+        strings: STRINGS,
+        onLang: () => {
+          fillZoneSelect();
+          fillUnits();
+          tickNow();
+          renderDt();
+          renderTs();
+          renderDiff();
+          renderAdd();
+        },
+      });
+      $('#ts').focus();
+      // #endregion
+    </script>
+  </body>
+</html>

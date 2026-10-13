@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Read, write and preview Markdown (.md) files live in the browser – with a reading mode, table of contents, syntax highlighting, task lists and HTML export."
+    />
+    <title>Markdown · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <link rel="stylesheet" href="md.css" />
+    <script src="../shared/tv.js"></script>
+    <script src="../shared/vendor/marked.js"></script>
+    <script src="../shared/vendor/purify.js"></script>
+    <script src="../shared/vendor/highlight.js"></script>
+  </head>
+
+  <body>
+    <div class="wrap" id="page">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">md</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <!-- Werkzeugleiste -->
+      <div class="box bar">
+        <div class="row">
+          <label class="btn primary" style="position: relative"
+            ><span data-i18n="open"></span
+            ><input type="file" id="file" accept=".md,.markdown,.mdown,.txt,text/markdown,text/plain" style="position: absolute; inset: 0; opacity: 0; cursor: pointer"
+          /></label>
+          <button class="btn" id="new" data-i18n="new"></button>
+          <button class="btn" id="save" data-i18n="save"></button>
+          <button class="btn" id="exportHtml" data-i18n="exportHtml"></button>
+          <button class="btn" id="print" data-i18n="print"></button>
+          <span class="spacer"></span>
+          <span class="seg" id="viewSeg">
+            <button data-view="edit" data-i18n="v_edit"></button>
+            <button data-view="split" data-i18n="v_split"></button>
+            <button data-view="read" data-i18n="v_read"></button>
+          </span>
+        </div>
+        <div class="row meta">
+          <span class="pill" id="fileName"></span>
+          <span class="mono muted" id="stats"></span>
+          <span class="spacer"></span>
+          <span class="mono muted" id="saved"></span>
+        </div>
+      </div>
+
+      <div class="md-layout" id="layout" data-view="split">
+        <!-- Editor -->
+        <section class="pane editor-pane">
+          <div class="fmt" id="fmt"></div>
+          <textarea id="src" spellcheck="true" data-i18n-ph="placeholder"></textarea>
+        </section>
+
+        <!-- Vorschau -->
+        <section class="pane preview-pane">
+          <div class="read-tools" id="readTools">
+            <span class="seg small" id="fontSeg">
+              <button data-font="sans">Aa Sans</button>
+              <button data-font="serif">Aa Serif</button>
+              <button data-font="mono">Aa Mono</button>
+            </span>
+            <span class="seg small" id="sizeSeg">
+              <button data-size="-1" aria-label="smaller">A−</button>
+              <button data-size="1" aria-label="larger">A+</button>
+            </span>
+            <span class="seg small" id="widthSeg">
+              <button data-width="narrow" data-i18n="w_narrow"></button>
+              <button data-width="wide" data-i18n="w_wide"></button>
+            </span>
+          </div>
+          <div class="read-grid">
+            <nav class="toc" id="toc" aria-label="Table of contents"></nav>
+            <article class="md-body" id="preview"></article>
+          </div>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Markdown v1.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <div class="dropzone-overlay" id="dropOverlay" hidden><span data-i18n="dropHere"></span></div>
+
+    <script src="md.js"></script>
+  </body>
+</html>

@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Compare two texts line by line, word by word or character by character – side by side or unified, with a patch export. Runs locally in the browser."
+    />
+    <title>Diff Checker · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <script src="../shared/tv.js"></script>
+
+    <style>
+      :root {
+        --add-bg: rgba(95, 191, 122, 0.16);
+        --add-strong: rgba(95, 191, 122, 0.42);
+        --del-bg: rgba(229, 103, 90, 0.16);
+        --del-strong: rgba(229, 103, 90, 0.45);
+      }
+      .inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .inputs .box {
+        margin: 0;
+      }
+      .inputs textarea {
+        min-height: 220px;
+        font-size: 0.84rem;
+        white-space: pre;
+        overflow: auto;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        align-items: center;
+      }
+      .diff {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        line-height: 1.55;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: auto;
+        max-height: 75vh;
+        background: var(--bg);
+        font-variant-ligatures: none;
+      }
+      .diff table {
+        border-collapse: collapse;
+        width: 100%;
+        table-layout: fixed;
+      }
+      .diff td {
+        vertical-align: top;
+        padding: 0 8px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .diff td.ln {
+        width: 3.4em;
+        text-align: right;
+        color: var(--text-muted);
+        opacity: 0.6;
+        user-select: none;
+        padding: 0 6px;
+        border-right: 1px solid var(--border);
+      }
+      .diff td.sign {
+        width: 1.4em;
+        user-select: none;
+        color: var(--text-muted);
+        padding: 0 2px 0 6px;
+      }
+      .diff tr.add td:not(.ln) {
+        background: var(--add-bg);
+      }
+      .diff tr.del td:not(.ln) {
+        background: var(--del-bg);
+      }
+      .diff td.add {
+        background: var(--add-bg);
+      }
+      .diff td.del {
+        background: var(--del-bg);
+      }
+      .diff td.empty {
+        background: repeating-linear-gradient(-45deg, transparent 0 5px, var(--surface-2) 5px 6px);
+      }
+      .diff ins,
+      .inline ins {
+        text-decoration: none;
+        background: var(--add-strong);
+        border-radius: 3px;
+      }
+      .diff del,
+      .inline del {
+        text-decoration: none;
+        background: var(--del-strong);
+        border-radius: 3px;
+      }
+      /* Nicht nur über Farbe unterscheiden (Farbschwäche): durchgestrichen vs. unterstrichen */
+      .diff del,
+      .inline del {
+        text-decoration: line-through;
+        text-decoration-color: var(--bad);
+        text-decoration-thickness: 2px;
+      }
+      .diff ins,
+      .inline ins {
+        text-decoration: underline;
+        text-decoration-color: var(--ok);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 3px;
+      }
+      .diff tr.fold td {
+        background: var(--surface);
+        color: var(--text-muted);
+        text-align: center;
+        cursor: pointer;
+        font-size: 0.72rem;
+        padding: 2px;
+      }
+      .diff tr.fold:hover td {
+        color: var(--accent);
+      }
+      .inline {
+        font-family: var(--mono);
+        font-size: 0.84rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-word;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg);
+        max-height: 75vh;
+        overflow: auto;
+      }
+      .same {
+        text-align: center;
+        padding: 28px;
+        color: var(--ok);
+        font-family: var(--mono);
+      }
+      @media (max-width: 760px) {
+        .inputs {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">diff</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <div class="inputs">
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="original"></span><span class="pill" id="aInfo"></span></h2>
+          <textarea id="a" spellcheck="false" data-i18n-ph="phA"></textarea>
+        </div>
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="changed"></span><span class="pill" id="bInfo"></span></h2>
+          <textarea id="b" spellcheck="false" data-i18n-ph="phB"></textarea>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="toolbar">
+          <span class="seg" id="unit">
+            <button data-unit="line" aria-selected="true" data-i18n="u_line"></button>
+            <button data-unit="word" aria-selected="false" data-i18n="u_word"></button>
+            <button data-unit="char" aria-selected="false" data-i18n="u_char"></button>
+          </span>
+          <span class="seg" id="layout">
+            <button data-layout="split" aria-selected="true" data-i18n="l_split"></button>
+            <button data-layout="unified" aria-selected="false" data-i18n="l_unified"></button>
+          </span>
+          <label class="check"><input type="checkbox" id="ignWs" /> <span data-i18n="ignWs"></span></label>
+          <label class="check"><input type="checkbox" id="ignCase" /> <span data-i18n="ignCase"></span></label>
+          <label class="check"><input type="checkbox" id="fold" checked /> <span data-i18n="fold"></span></label>
+          <span class="spacer"></span>
+          <button class="btn sm" id="swap" data-i18n="swap"></button>
+          <button class="btn sm" id="sample" data-i18n="sample"></button>
+          <button class="btn sm" id="patch" data-i18n="patch"></button>
+        </div>
+        <div class="row" id="stats" style="margin-top: 12px"></div>
+      </div>
+
+      <div class="box">
+        <div id="out"></div>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Diff Checker v1.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script>
+      const STRINGS = {
+        de: {
+          pageTitle: 'Diff-Checker',
+          kicker: '// diff-checker',
+          title: 'Zwei Texte <span class="accent">vergleichen</span>.',
+          lead: 'Unterschiede zeilen-, wort- oder zeichenweise – nebeneinander oder zusammengeführt, mit Hervorhebung innerhalb der Zeile und Patch-Export.',
+          original: 'Original',
+          changed: 'Geändert',
+          phA: 'Ursprünglichen Text einfügen …',
+          phB: 'Geänderten Text einfügen …',
+          u_line: 'Zeilen',
+          u_word: 'Wörter',
+          u_char: 'Zeichen',
+          l_split: 'Nebeneinander',
+          l_unified: 'Zusammengeführt',
+          ignWs: 'Leerraum ignorieren',
+          ignCase: 'Gross/klein ignorieren',
+          fold: 'Gleiches einklappen',
+          swap: '⇄ Tauschen',
+          sample: 'Beispiel',
+          patch: 'Patch kopieren',
+          same: '✓ Keine Unterschiede',
+          added: (n) => `+${n} hinzugefügt`,
+          removed: (n) => `−${n} entfernt`,
+          unchanged: (n) => `${n} gleich`,
+          similarity: (p) => `${p}% ähnlich`,
+          lines: (n) => `${n} Zeilen`,
+          hidden: (n) => `⋯ ${n} gleiche Zeilen anzeigen`,
+          tooBig: 'Sehr grosse Eingabe – Vergleich auf Zeilenebene beschränkt.',
+          local: 'läuft lokal im Browser',
+        },
+        en: {
+          pageTitle: 'Diff Checker',
+          kicker: '// diff checker',
+          title: '<span class="accent">Compare</span> two texts.',
+          lead: 'Differences by line, word or character – side by side or unified, with in-line highlighting and patch export.',
+          original: 'Original',
+          changed: 'Changed',
+          phA: 'Paste the original text …',
+          phB: 'Paste the changed text …',
+          u_line: 'Lines',
+          u_word: 'Words',
+          u_char: 'Characters',
+          l_split: 'Side by side',
+          l_unified: 'Unified',
+          ignWs: 'Ignore whitespace',
+          ignCase: 'Ignore case',
+          fold: 'Fold unchanged',
+          swap: '⇄ Swap',
+          sample: 'Sample',
+          patch: 'Copy patch',
+          same: '✓ No differences',
+          added: (n) => `+${n} added`,
+          removed: (n) => `−${n} removed`,
+          unchanged: (n) => `${n} unchanged`,
+          similarity: (p) => `${p}% similar`,
+          lines: (n) => `${n} lines`,
+          hidden: (n) => `⋯ show ${n} unchanged lines`,
+          tooBig: 'Very large input – comparison limited to lines.',
+          local: 'runs locally in your browser',
+        },
+      };
+
+      const { $, $$, t, esc, copy } = TV;
+
+      // #region Myers-Diff (O(ND)) auf beliebigen Token-Listen
+      // Liefert [{ op: '=', '-', '+', a: Token|undefined, b: Token|undefined }]
+      function myers(A, B, eq = (x, y) => x === y) {
+        // gemeinsamen Anfang/Ende abschneiden (macht typische Fälle sehr schnell)
+        let pre = 0;
+        while (pre < A.length && pre < B.length && eq(A[pre], B[pre])) pre++;
+        let suf = 0;
+        while (suf < A.length - pre && suf < B.length - pre && eq(A[A.length - 1 - suf], B[B.length - 1 - suf])) suf++;
+        const a = A.slice(pre, A.length - suf),
+          b = B.slice(pre, B.length - suf);
+        const N = a.length,
+          M = b.length,
+          MAX = N + M;
+        const V = new Int32Array(2 * MAX + 2);
+        const trace = [];
+        let found = false;
+        for (let d = 0; d <= MAX && !found; d++) {
+          trace.push(V.slice());
+          for (let k = -d; k <= d; k += 2) {
+            let x = k === -d || (k !== d && V[MAX + k - 1] < V[MAX + k + 1]) ? V[MAX + k + 1] : V[MAX + k - 1] + 1;
+            let y = x - k;
+            while (x < N && y < M && eq(a[x], b[y])) {
+              x++;
+              y++;
+            }
+            V[MAX + k] = x;
+            if (x >= N && y >= M) {
+              found = true;
+              break;
+            }
+          }
+        }
+        // Rückverfolgung
+        const ops = [];
+        let x = N,
+          y = M;
+        for (let d = trace.length - 1; d > 0; d--) {
+          const Vd = trace[d];
+          const k = x - y;
+          const prevK = k === -d || (k !== d && Vd[MAX + k - 1] < Vd[MAX + k + 1]) ? k + 1 : k - 1;
+          const px = Vd[MAX + prevK],
+            py = px - prevK;
+          while (x > px && y > py) ops.push({ op: '=', a: a[--x], b: b[--y] });
+          if (x === px) ops.push({ op: '+', b: b[--y] });
+          else ops.push({ op: '-', a: a[--x] });
+        }
+        while (x > 0 && y > 0) ops.push({ op: '=', a: a[--x], b: b[--y] });
+        ops.reverse();
+        const head = A.slice(0, pre).map((v, i) => ({ op: '=', a: v, b: B[i] }));
+        const tail = A.slice(A.length - suf).map((v, i) => ({ op: '=', a: v, b: B[B.length - suf + i] }));
+        return head.concat(ops, tail);
+      }
+      // #endregion
+
+      // #region Tokenisierung + Normalisierung
+      let unit = 'line';
+      let layout = 'split';
+      const norm = (s) => {
+        if ($('#ignCase').checked) s = s.toLowerCase();
+        if ($('#ignWs').checked) s = s.replace(/\s+/g, ' ').trim();
+        return s;
+      };
+      const eqN = (x, y) => norm(x) === norm(y);
+      const splitLines = (s) => (s === '' ? [] : s.replace(/\r\n?/g, '\n').split('\n'));
+      const splitWords = (s) => s.match(/\s+|[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]/gu) || [];
+      // #endregion
+
+      // #region Inline-Hervorhebung innerhalb geänderter Zeilen
+      function inlinePair(x, y) {
+        const ops = myers(splitWords(x), splitWords(y), eqN);
+        let l = '',
+          r = '';
+        ops.forEach((o) => {
+          if (o.op === '=') {
+            l += esc(o.a);
+            r += esc(o.b);
+          } else if (o.op === '-') l += `<del>${esc(o.a)}</del>`;
+          else r += `<ins>${esc(o.b)}</ins>`;
+        });
+        return [l, r];
+      }
+      // #endregion
+
+      // #region Zeilen-Ansicht
+      // Ops in Zeilen-Zeilen gruppieren: aufeinanderfolgende -/+ werden gepaart
+      function buildRows(ops) {
+        const rows = [];
+        let ia = 0,
+          ib = 0;
+        for (let i = 0; i < ops.length; ) {
+          if (ops[i].op === '=') {
+            rows.push({ type: 'eq', la: ++ia, lb: ++ib, a: ops[i].a, b: ops[i].b });
+            i++;
+            continue;
+          }
+          const dels = [],
+            adds = [];
+          while (i < ops.length && ops[i].op !== '=') {
+            (ops[i].op === '-' ? dels : adds).push(ops[i]);
+            i++;
+          }
+          const n = Math.max(dels.length, adds.length);
+          for (let k = 0; k < n; k++) {
+            const d = dels[k],
+              a = adds[k];
+            rows.push({ type: d && a ? 'mod' : d ? 'del' : 'add', la: d ? ++ia : null, lb: a ? ++ib : null, a: d?.a, b: a?.b });
+          }
+        }
+        return rows;
+      }
+      const CONTEXT = 3;
+      const expanded = new Set();
+      function foldRanges(rows) {
+        // gibt pro Zeile zurück, ob sie sichtbar ist; lange gleiche Blöcke werden eingeklappt
+        const vis = rows.map((r) => r.type !== 'eq');
+        if (!$('#fold').checked) return rows.map(() => true);
+        rows.forEach((r, i) => {
+          if (r.type === 'eq') return;
+          for (let k = Math.max(0, i - CONTEXT); k <= Math.min(rows.length - 1, i + CONTEXT); k++) vis[k] = true;
+        });
+        return vis;
+      }
+      function renderLines(ops) {
+        const rows = buildRows(ops);
+        const vis = foldRanges(rows);
+        let html = '<table>';
+        for (let i = 0; i < rows.length; ) {
+          if (!vis[i] && !expanded.has(i)) {
+            let j = i;
+            while (j < rows.length && !vis[j]) j++;
+            html += `<tr class="fold" data-from="${i}" data-to="${j}"><td colspan="${layout === 'split' ? 6 : 4}">${esc(t('hidden', j - i))}</td></tr>`;
+            i = j;
+            continue;
+          }
+          const r = rows[i];
+          if (layout === 'split') {
+            let l = r.a !== undefined ? esc(r.a) : '',
+              rr = r.b !== undefined ? esc(r.b) : '';
+            if (r.type === 'mod') [l, rr] = inlinePair(r.a, r.b);
+            const lc = r.type === 'del' || r.type === 'mod' ? 'del' : r.type === 'add' ? 'empty' : '';
+            const rc = r.type === 'add' || r.type === 'mod' ? 'add' : r.type === 'del' ? 'empty' : '';
+            html += `<tr><td class="ln">${r.la ?? ''}</td><td class="sign ${lc}">${lc === 'del' ? '−' : ''}</td><td class="${lc}">${l}</td>
+                     <td class="ln">${r.lb ?? ''}</td><td class="sign ${rc}">${rc === 'add' ? '+' : ''}</td><td class="${rc}">${rr}</td></tr>`;
+          } else {
+            if (r.type === 'eq') html += `<tr><td class="ln">${r.la}</td><td class="ln">${r.lb}</td><td class="sign"></td><td>${esc(r.a)}</td></tr>`;
+            else {
+              let l = r.a !== undefined ? esc(r.a) : null,
+                rr = r.b !== undefined ? esc(r.b) : null;
+              if (r.type === 'mod') [l, rr] = inlinePair(r.a, r.b);
+              if (l !== null) html += `<tr class="del"><td class="ln">${r.la}</td><td class="ln"></td><td class="sign">−</td><td>${l}</td></tr>`;
+              if (rr !== null) html += `<tr class="add"><td class="ln"></td><td class="ln">${r.lb}</td><td class="sign">+</td><td>${rr}</td></tr>`;
+            }
+          }
+          i++;
+        }
+        html += '</table>';
+        if (layout === 'split') html = html.replace('<table>', '<table><colgroup><col style="width:3.4em"><col style="width:1.4em"><col><col style="width:3.4em"><col style="width:1.4em"><col></colgroup>');
+        return `<div class="diff">${html}</div>`;
+      }
+      $('#out').addEventListener('click', (e) => {
+        const f = e.target.closest('tr.fold');
+        if (!f) return;
+        for (let i = +f.dataset.from; i < +f.dataset.to; i++) expanded.add(i);
+        run();
+      });
+      // #endregion
+
+      // #region Wort-/Zeichen-Ansicht
+      function renderInline(ops) {
+        let html = '';
+        ops.forEach((o) => {
+          if (o.op === '=') html += esc(o.b);
+          else if (o.op === '-') html += `<del>${esc(o.a)}</del>`;
+          else html += `<ins>${esc(o.b)}</ins>`;
+        });
+        return `<div class="inline">${html}</div>`;
+      }
+      // #endregion
+
+      // #region Patch (unified diff)
+      function unifiedPatch() {
+        const A = splitLines($('#a').value),
+          B = splitLines($('#b').value);
+        const rows = buildRows(myers(A, B, eqN)).flatMap((r) =>
+          r.type === 'mod' ? [{ type: 'del', la: r.la, a: r.a }, { type: 'add', lb: r.lb, b: r.b }] : [r],
+        );
+        const out = ['--- a/original', '+++ b/changed'];
+        let i = 0;
+        while (i < rows.length) {
+          while (i < rows.length && rows[i].type === 'eq') i++;
+          if (i >= rows.length) break;
+          let start = Math.max(0, i - 3);
+          let end = i;
+          // Hunk erweitern, solange Änderungen innerhalb von 6 Zeilen folgen
+          for (;;) {
+            while (end < rows.length && rows[end].type !== 'eq') end++;
+            let gap = end;
+            while (gap < rows.length && rows[gap].type === 'eq' && gap - end < 7) gap++;
+            if (gap < rows.length && rows[gap].type !== 'eq' && gap - end < 7) end = gap;
+            else break;
+          }
+          const stop = Math.min(rows.length, end + 3);
+          const hunk = rows.slice(start, stop);
+          const firstA = (hunk.find((r) => r.la)?.la ?? 1),
+            firstB = (hunk.find((r) => r.lb)?.lb ?? 1);
+          const lenA = hunk.filter((r) => r.type !== 'add').length,
+            lenB = hunk.filter((r) => r.type !== 'del').length;
+          out.push(`@@ -${firstA},${lenA} +${firstB},${lenB} @@`);
+          hunk.forEach((r) => out.push((r.type === 'eq' ? ' ' : r.type === 'del' ? '-' : '+') + (r.type === 'add' ? r.b : r.a)));
+          i = stop;
+        }
+        return out.join('\n') + '\n';
+      }
+      $('#patch').addEventListener('click', () => copy(unifiedPatch(), 'patch'));
+      // #endregion
+
+      // #region Ablauf
+      let timer;
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(run, 150);
+      }
+      function run() {
+        const A = $('#a').value,
+          B = $('#b').value;
+        const la = splitLines(A),
+          lb = splitLines(B);
+        $('#aInfo').textContent = t('lines', la.length);
+        $('#bInfo').textContent = t('lines', lb.length);
+        let u = unit;
+        if (u !== 'line' && A.length + B.length > 200000) u = 'line';
+        let ops;
+        if (u === 'line') ops = myers(la, lb, eqN);
+        else if (u === 'word') ops = myers(splitWords(A), splitWords(B), eqN);
+        else ops = myers([...A], [...B], eqN);
+
+        const add = ops.filter((o) => o.op === '+').length,
+          del = ops.filter((o) => o.op === '-').length,
+          eq = ops.filter((o) => o.op === '=').length;
+        const total = Math.max(1, eq * 2 + add + del);
+        const sim = Math.round(((eq * 2) / total) * 100);
+        $('#stats').innerHTML =
+          `<span class="pill ok">${esc(t('added', add))}</span><span class="pill bad">${esc(t('removed', del))}</span>` +
+          `<span class="pill">${esc(t('unchanged', eq))}</span><span class="pill">${esc(t('similarity', sim))}</span>` +
+          (u !== unit ? `<span class="pill warn">${esc(t('tooBig'))}</span>` : '');
+
+        if (!add && !del) $('#out').innerHTML = `<div class="same">${esc(t('same'))}</div>`;
+        else $('#out').innerHTML = u === 'line' ? renderLines(ops) : renderInline(ops);
+        try {
+          sessionStorage.setItem('tv-diff', JSON.stringify([A, B]));
+        } catch (e) {}
+      }
+      ['#a', '#b'].forEach((s) =>
+        $(s).addEventListener('input', () => {
+          expanded.clear();
+          schedule();
+        }),
+      );
+      ['#ignWs', '#ignCase', '#fold'].forEach((s) => $(s).addEventListener('change', run));
+      $$('#unit button').forEach((b) =>
+        b.addEventListener('click', () => {
+          unit = b.dataset.unit;
+          $$('#unit button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+          $('#layout').style.visibility = unit === 'line' ? '' : 'hidden';
+          run();
+        }),
+      );
+      $$('#layout button').forEach((b) =>
+        b.addEventListener('click', () => {
+          layout = b.dataset.layout;
+          $$('#layout button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+          run();
+        }),
+      );
+      $('#swap').addEventListener('click', () => {
+        [$('#a').value, $('#b').value] = [$('#b').value, $('#a').value];
+        run();
+      });
+      $('#sample').addEventListener('click', () => {
+        $('#a').value = `# ToolVault
+Small tools I built for myself.
+
+Tools:
+- QR Decoder
+- Unit Converter
+- FileFlip
+- JSON Formatter
+
+Everything runs locally.
+Version 1.3`;
+        $('#b').value = `# ToolVault
+Small, fast tools I built for myself.
+
+Tools:
+- QR Studio (create + read)
+- Unit Converter
+- FileFlip
+- JSON Formatter
+- Diff Checker
+
+Everything runs locally in the browser.
+Version 3.0`;
+        expanded.clear();
+        run();
+      });
+      // #endregion
+
+      TV.init({ glyph: '±', strings: STRINGS, onLang: run });
+      try {
+        const saved = JSON.parse(sessionStorage.getItem('tv-diff'));
+        if (saved) [$('#a').value, $('#b').value] = saved;
+      } catch (e) {}
+      if (!$('#a').value && !$('#b').value) $('#sample').click();
+      else run();
+    </script>
+  </body>
+</html>

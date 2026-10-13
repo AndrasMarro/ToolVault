@@ -1023,8 +1023,15 @@
         },
       });
       C.loadNames().then(() => current && showColor(current)).catch(() => {});
-      const startMode = location.hash.slice(1);
-      setMode(['identify', 'simulate', 'enhance', 'pair'].includes(startMode) ? startMode : 'identify');
+      // Link-Format: #pair&a=313080&b=7f8030 (z. B. vom Farb-Konverter)
+      const [startMode, ...params] = location.hash.slice(1).split('&');
+      const hp = new URLSearchParams(params.join('&'));
+      [['a', 'pa', 'paHex'], ['b', 'pb', 'pbHex']].forEach(([k, pick, text]) => {
+        const c = C.hexToRgb(hp.get(k) || '');
+        if (c) $('#' + pick).value = $('#' + text).value = C.rgbToHex(c);
+      });
+      renderPair();
+      setMode(['identify', 'simulate', 'enhance', 'pair', 'test'].includes(startMode) ? startMode : 'identify');
     </script>
   </body>
 </html>

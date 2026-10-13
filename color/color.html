@@ -36,11 +36,14 @@
           -7px 0;
       }
       /* Kopf: Farbfeld + Eingabe + Name */
+      /* Feste Höhen: der Kopf darf beim Ziehen im Farbrad nicht wachsen/schrumpfen,
+         sonst springt das Rad unter dem Mauszeiger weg */
       .head {
         display: grid;
         grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1.1fr);
         gap: 18px;
         align-items: stretch;
+        height: 196px;
       }
       .swatch {
         position: relative;
@@ -84,6 +87,8 @@
         color: var(--text-muted);
       }
       .name-panel {
+        overflow: hidden;
+        min-width: 0;
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 12px;
@@ -96,7 +101,10 @@
         font-size: 1.35rem;
         font-weight: 600;
         line-height: 1.2;
-        text-wrap: balance;
+        height: 1.2em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .name-main::first-letter {
         text-transform: uppercase;
@@ -119,7 +127,14 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        overflow: hidden;
+        min-width: 0;
+      }
+      .name-row .v > span:not(.dot) {
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .dot {
         display: inline-block;
@@ -139,14 +154,14 @@
       /* Farbrad */
       .wheel-wrap {
         display: grid;
-        grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+        grid-template-columns: 320px minmax(0, 1fr);
         gap: 22px;
         align-items: start;
       }
       .wheel {
         position: relative;
-        width: 100%;
-        aspect-ratio: 1;
+        width: 320px;
+        height: 320px;
         touch-action: none;
         user-select: none;
       }
@@ -231,7 +246,11 @@
         font-size: 0.74rem;
         color: var(--text-muted);
         line-height: 1.3;
-        min-height: 2.6em;
+        height: 2.6em;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
       }
       .bright {
         display: grid;
@@ -262,6 +281,10 @@
       }
       .grad-label {
         grid-column: 1 / -1;
+        height: 1.3em;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
         font-family: var(--mono);
         font-size: 0.72rem;
         color: var(--text-muted);
@@ -269,7 +292,7 @@
         display: flex;
         gap: 6px;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
       }
       .steps {
         display: grid;
@@ -367,6 +390,10 @@
       @media (max-width: 900px) {
         .head {
           grid-template-columns: 130px minmax(0, 1fr);
+          height: auto;
+        }
+        .name-panel {
+          height: 150px;
         }
         .name-panel {
           grid-column: 1 / -1;
@@ -375,13 +402,16 @@
           grid-template-columns: 1fr;
         }
         .wheel {
-          max-width: 340px;
           margin: 0 auto;
         }
       }
       @media (max-width: 560px) {
         .head {
           grid-template-columns: 1fr;
+        }
+        .wheel {
+          width: 280px;
+          height: 280px;
         }
         .palette {
           grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -453,7 +483,7 @@
             <div class="row">
               <button class="btn sm" id="random" data-i18n="random"></button>
               <button class="btn sm" id="fromTheme" data-i18n="fromTheme"></button>
-              <a class="btn sm" href="../vision/vision.html" data-i18n="toVision"></a>
+              <a class="btn sm" id="toVision" href="../vision/vision.html" data-i18n="toVision"></a>
             </div>
             <span class="msg" id="msg" style="margin: 0"></span>
           </div>
@@ -1230,6 +1260,9 @@
         try {
           history.replaceState(null, '', '#' + rgbToHex(color).slice(1));
         } catch (e) {}
+        // Farbsehen-Tool: Hauptfarbe + Komplementärfarbe als Farbpaar mitgeben
+        const comp = C.rgbToHex(hsvToRgb((wheel.h + 180) % 360, wheel.s, wheel.v)).slice(1);
+        $('#toVision').href = `../vision/vision.html#pair&a=${C.rgbToHex(color).slice(1)}&b=${comp}`;
       }
 
       // wheelState: vom Rad gesetzt (Farbton bleibt erhalten), sonst aus der Farbe ableiten

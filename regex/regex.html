@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Test JavaScript regular expressions live: highlighted matches, capture groups, replace preview, presets and a cheat sheet — safe from runaway patterns."
+    />
+    <title>Regex Tester · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <script src="../shared/tv.js"></script>
+
+    <style>
+      .pattern {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        padding: 4px 6px 4px 14px;
+        font-family: var(--mono);
+        font-size: 1.05rem;
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .pattern:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+      .pattern.is-bad {
+        border-color: var(--bad);
+      }
+      .pattern .slash {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .pattern input {
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent;
+        font-size: 1.05rem;
+        padding: 10px 4px;
+      }
+      #flagsView {
+        color: var(--accent);
+        min-width: 2ch;
+      }
+      .flags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .flag {
+        font-family: var(--mono);
+        font-size: 0.76rem;
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text-muted);
+        border-radius: 7px;
+        padding: 5px 9px;
+        cursor: pointer;
+      }
+      .flag b {
+        color: var(--text);
+      }
+      .flag[aria-pressed='true'] {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .flag[aria-pressed='true'] b {
+        color: var(--accent);
+      }
+      #subject {
+        min-height: 200px;
+      }
+      .hl {
+        font-variant-ligatures: none;
+        font-family: var(--mono);
+        font-size: 0.88rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 10px 12px;
+        min-height: 80px;
+        max-height: 420px;
+        overflow: auto;
+        line-height: 1.6;
+      }
+      .hl mark {
+        outline: none;
+        padding: 1px 0;
+        border-bottom: 2px solid var(--accent);
+      }
+      .hl mark.alt {
+        background: rgba(127, 180, 255, 0.18);
+        color: #7fb4ff;
+        border-color: #7fb4ff;
+      }
+      [data-theme='paper'] .hl mark.alt {
+        color: #2456b8;
+        border-color: #2456b8;
+      }
+      .hl mark.empty {
+        border-left: 2px solid var(--accent);
+        border-bottom: 0;
+        background: none;
+        padding: 0;
+      }
+      .matches {
+        max-height: 420px;
+        overflow: auto;
+        display: grid;
+        gap: 8px;
+      }
+      .m-item {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 8px 10px;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+      }
+      .m-item .head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        margin-bottom: 4px;
+      }
+      .m-item .val {
+        color: var(--accent);
+        word-break: break-all;
+        white-space: pre-wrap;
+      }
+      .m-item .grp {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 10px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed var(--border);
+      }
+      .m-item .grp span:nth-child(odd) {
+        color: var(--text-muted);
+      }
+      .m-item .grp span:nth-child(even) {
+        word-break: break-all;
+      }
+      .cheat {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 4px 14px;
+        font-size: 0.8rem;
+      }
+      .cheat button {
+        display: grid;
+        grid-template-columns: 7.5em 1fr;
+        gap: 8px;
+        text-align: left;
+        background: none;
+        border: 0;
+        padding: 4px 6px;
+        border-radius: 6px;
+        color: var(--text-muted);
+        font: inherit;
+        cursor: pointer;
+      }
+      .cheat button:hover {
+        background: var(--accent-soft);
+        color: var(--text);
+      }
+      .cheat code {
+        font-family: var(--mono);
+        color: var(--accent);
+      }
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">regex</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <div class="box">
+        <h2 class="box-title">
+          <span data-i18n="pattern"></span>
+          <button class="btn sm" id="copyRe" data-i18n="copyJs"></button>
+        </h2>
+        <div class="pattern" id="patternBox">
+          <span class="slash">/</span>
+          <input type="text" id="pattern" spellcheck="false" autocomplete="off" aria-label="Pattern" />
+          <span class="slash">/</span><span id="flagsView"></span>
+        </div>
+        <div class="flags" id="flags"></div>
+        <div class="msg" id="err"></div>
+        <div class="presets" style="margin-top: 12px">
+          <span class="muted mono" style="font-size: 0.74rem; align-self: center" data-i18n="presets"></span>
+          <span id="presets" class="presets"></span>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top: 14px">
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="subject"></span><span class="pill" id="count"></span></h2>
+          <textarea id="subject" spellcheck="false"></textarea>
+          <h2 class="box-title" style="margin-top: 14px"><span data-i18n="highlight"></span></h2>
+          <div class="hl" id="hl"></div>
+        </div>
+        <div class="box">
+          <h2 class="box-title"><span data-i18n="matches"></span></h2>
+          <div class="matches" id="matches"></div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2 class="box-title">
+          <span data-i18n="replace"></span>
+          <button class="btn sm" data-copy="#replOut" data-i18n="copy"></button>
+        </h2>
+        <input type="text" id="repl" spellcheck="false" data-i18n-ph="replPh" />
+        <div class="out" id="replOut" style="margin-top: 10px; max-height: 260px; overflow: auto"></div>
+      </div>
+
+      <div class="box">
+        <h2 class="box-title"><span data-i18n="cheat"></span></h2>
+        <div class="cheat" id="cheat"></div>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Regex Tester v1.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script>
+      const STRINGS = {
+        de: {
+          pageTitle: 'Regex-Tester',
+          kicker: '// regex-tester',
+          title: 'Reguläre Ausdrücke <span class="accent">live</span> testen.',
+          lead: 'JavaScript-Regex mit markierten Treffern, Gruppen und Ersetzen-Vorschau. Läuft in einem Worker – ein ausufernder Ausdruck friert die Seite nicht ein.',
+          pattern: 'Ausdruck',
+          copyJs: 'Als JS kopieren',
+          presets: 'Vorlagen:',
+          subject: 'Testtext',
+          highlight: 'Treffer im Text',
+          matches: 'Treffer & Gruppen',
+          replace: 'Ersetzen',
+          replPh: 'Ersatz, z. B. $1 oder $<name> …',
+          copy: 'Kopieren',
+          cheat: 'Spickzettel (klicken zum Einfügen)',
+          count: (n) => n + ' Treffer',
+          capped: (n) => `erste ${n} angezeigt`,
+          none: 'Keine Treffer.',
+          timeout: '⏱ Abgebrochen nach 1,5 s – der Ausdruck backtrackt vermutlich katastrophal.',
+          match: 'Treffer',
+          at: 'Pos.',
+          f_g: 'global',
+          f_i: 'ignoriert Gross/klein',
+          f_m: 'mehrzeilig ^$',
+          f_s: '. trifft \\n',
+          f_u: 'Unicode',
+          f_y: 'sticky',
+          f_d: 'Indizes',
+          local: 'läuft lokal im Browser',
+          c: {
+            '.': 'beliebiges Zeichen',
+            '\\d': 'Ziffer',
+            '\\w': 'Wortzeichen',
+            '\\s': 'Leerraum',
+            '\\D \\W \\S': 'Negation davon',
+            '\\b': 'Wortgrenze',
+            '^ $': 'Anfang / Ende',
+            '[abc]': 'eines davon',
+            '[^abc]': 'keines davon',
+            '[a-z]': 'Bereich',
+            'a|b': 'a oder b',
+            '*': '0 oder mehr',
+            '+': '1 oder mehr',
+            '?': '0 oder 1',
+            '{2,5}': '2 bis 5 mal',
+            '*?': 'genügsam (lazy)',
+            '(…)': 'Gruppe',
+            '(?:…)': 'ohne Erfassung',
+            '(?<name>…)': 'benannte Gruppe',
+            '\\1': 'Rückverweis',
+            '(?=…)': 'Lookahead',
+            '(?!…)': 'neg. Lookahead',
+            '(?<=…)': 'Lookbehind',
+            '\\p{L}': 'Unicode-Buchstabe (u)',
+          },
+        },
+        en: {
+          pageTitle: 'Regex Tester',
+          kicker: '// regex tester',
+          title: 'Test regular expressions <span class="accent">live</span>.',
+          lead: 'JavaScript regex with highlighted matches, groups and a replace preview. Runs in a worker – a runaway pattern won’t freeze the page.',
+          pattern: 'Pattern',
+          copyJs: 'Copy as JS',
+          presets: 'Presets:',
+          subject: 'Test string',
+          highlight: 'Matches in text',
+          matches: 'Matches & groups',
+          replace: 'Replace',
+          replPh: 'Replacement, e.g. $1 or $<name> …',
+          copy: 'Copy',
+          cheat: 'Cheat sheet (click to insert)',
+          count: (n) => n + (n === 1 ? ' match' : ' matches'),
+          capped: (n) => `first ${n} shown`,
+          none: 'No matches.',
+          timeout: '⏱ Aborted after 1.5 s – the pattern is probably backtracking catastrophically.',
+          match: 'Match',
+          at: 'at',
+          f_g: 'global',
+          f_i: 'ignore case',
+          f_m: 'multiline ^$',
+          f_s: '. matches \\n',
+          f_u: 'unicode',
+          f_y: 'sticky',
+          f_d: 'indices',
+          local: 'runs locally in your browser',
+          c: {
+            '.': 'any character',
+            '\\d': 'digit',
+            '\\w': 'word character',
+            '\\s': 'whitespace',
+            '\\D \\W \\S': 'negated',
+            '\\b': 'word boundary',
+            '^ $': 'start / end',
+            '[abc]': 'one of',
+            '[^abc]': 'none of',
+            '[a-z]': 'range',
+            'a|b': 'a or b',
+            '*': '0 or more',
+            '+': '1 or more',
+            '?': '0 or 1',
+            '{2,5}': '2 to 5 times',
+            '*?': 'lazy',
+            '(…)': 'group',
+            '(?:…)': 'non-capturing',
+            '(?<name>…)': 'named group',
+            '\\1': 'back-reference',
+            '(?=…)': 'lookahead',
+            '(?!…)': 'negative lookahead',
+            '(?<=…)': 'lookbehind',
+            '\\p{L}': 'Unicode letter (u)',
+          },
+        },
+      };
+
+      const { $, $$, t, esc, copy } = TV;
+      const MAX_SHOW = 500;
+
+      const PRESETS = [
+        ['E-Mail', String.raw`[\w.+-]+@[\w-]+(?:\.[\w-]+)+`, 'gi'],
+        ['URL', String.raw`https?:\/\/[^\s/$.?#].[^\s]*`, 'gi'],
+        ['IPv4', String.raw`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`, 'g'],
+        ['ISO date', String.raw`(?<year>\d{4})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12]\d|3[01])`, 'g'],
+        ['DD.MM.YYYY', String.raw`\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(\d{4})\b`, 'g'],
+        ['HEX color', String.raw`#(?:[0-9a-f]{3,4}){1,2}\b`, 'gi'],
+        ['IBAN', String.raw`\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b`, 'g'],
+        ['CH phone', String.raw`(?:\+41|0041|0)\s?(?:\d{2})\s?\d{3}\s?\d{2}\s?\d{2}`, 'g'],
+        ['Duplicate word', String.raw`\b(\w+)\s+\1\b`, 'gi'],
+      ];
+      const SAMPLE = `Kontakt: hello@toolvault.dev, support@example.co.uk
+Web: https://toolvault.dev/tools?id=42 und http://example.com
+Server 192.168.1.20 antwortet, 999.1.1.1 nicht.
+Release 2026-10-13, Deadline 31.12.2026
+Farben: #e8a23c, #fff, #4FD1E0
+IBAN CH93 0076 2011 6238 5295 7 · Tel. +41 79 123 45 67
+This is is a duplicate duplicate test.`;
+
+      // #region Worker — Ausdruck isoliert ausführen, damit Endlos-Backtracking abbrechbar ist
+      const workerSrc = `
+        self.onmessage = (e) => {
+          const { id, src, flags, text, repl, max } = e.data;
+          try {
+            const re = new RegExp(src, flags);
+            const out = [];
+            let total = 0;
+            if (re.global || re.sticky) {
+              re.lastIndex = 0;
+              let m;
+              while ((m = re.exec(text)) !== null) {
+                total++;
+                if (out.length < max) out.push({ i: m.index, v: m[0], g: m.slice(1), n: m.groups || null });
+                if (m[0] === '') re.lastIndex += (re.unicode && text.codePointAt(re.lastIndex) > 0xffff) ? 2 : 1;
+                if (!re.global) break;
+              }
+            } else {
+              const m = re.exec(text);
+              if (m) { total = 1; out.push({ i: m.index, v: m[0], g: m.slice(1), n: m.groups || null }); }
+            }
+            const replaced = repl === null ? null : text.replace(new RegExp(src, flags), repl);
+            self.postMessage({ id, ok: true, matches: out, total, replaced });
+          } catch (err) {
+            self.postMessage({ id, ok: false, error: err.message });
+          }
+        };`;
+      const workerUrl = URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' }));
+      let worker = null;
+      let jobId = 0;
+      let killTimer = null;
+
+      function ensureWorker() {
+        if (!worker) {
+          worker = new Worker(workerUrl);
+          worker.onmessage = (e) => {
+            if (e.data.id !== jobId) return;
+            clearTimeout(killTimer);
+            render(e.data);
+          };
+        }
+        return worker;
+      }
+      // #endregion
+
+      // #region Flags
+      const FLAG_LIST = ['g', 'i', 'm', 's', 'u', 'y', 'd'];
+      const flags = new Set(['g']);
+      function renderFlags() {
+        $('#flags').innerHTML = '';
+        FLAG_LIST.forEach((f) => {
+          const b = document.createElement('button');
+          b.className = 'flag';
+          b.setAttribute('aria-pressed', String(flags.has(f)));
+          b.innerHTML = `<b>${f}</b> ${esc(t('f_' + f))}`;
+          b.addEventListener('click', () => {
+            flags.has(f) ? flags.delete(f) : flags.add(f);
+            renderFlags();
+            schedule();
+          });
+          $('#flags').appendChild(b);
+        });
+        $('#flagsView').textContent = flagStr();
+      }
+      const flagStr = () => FLAG_LIST.filter((f) => flags.has(f)).join('');
+      // #endregion
+
+      // #region Ausführen + Darstellen
+      const pattern = $('#pattern');
+      const subject = $('#subject');
+      const repl = $('#repl');
+      let timer;
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(run, 120);
+        try {
+          const q = new URLSearchParams({ re: pattern.value, f: flagStr() });
+          history.replaceState(null, '', '#' + q.toString());
+        } catch (e) {}
+      }
+
+      function run() {
+        $('#flagsView').textContent = flagStr();
+        const src = pattern.value;
+        $('#patternBox').classList.remove('is-bad');
+        $('#err').textContent = '';
+        if (!src) {
+          $('#hl').textContent = subject.value;
+          $('#matches').innerHTML = '';
+          $('#count').textContent = '';
+          $('#replOut').textContent = '';
+          return;
+        }
+        const id = ++jobId;
+        ensureWorker().postMessage({
+          id,
+          src,
+          flags: flagStr(),
+          text: subject.value,
+          repl: repl.value ? repl.value : null,
+          max: MAX_SHOW,
+        });
+        clearTimeout(killTimer);
+        killTimer = setTimeout(() => {
+          worker.terminate();
+          worker = null;
+          $('#patternBox').classList.add('is-bad');
+          $('#err').className = 'msg bad';
+          $('#err').textContent = t('timeout');
+          $('#count').textContent = '';
+        }, 1500);
+      }
+
+      let last = null;
+      function render(res) {
+        last = res;
+        const text = subject.value;
+        if (!res.ok) {
+          $('#patternBox').classList.add('is-bad');
+          $('#err').className = 'msg bad';
+          $('#err').textContent = res.error;
+          $('#hl').textContent = text;
+          $('#matches').innerHTML = '';
+          $('#count').textContent = '';
+          $('#replOut').textContent = '';
+          return;
+        }
+        const { matches, total } = res;
+        $('#count').textContent = t('count', total) + (total > matches.length ? ' · ' + t('capped', matches.length) : '');
+        $('#count').className = 'pill' + (total ? ' ok' : '');
+
+        // Text mit Markierungen
+        let html = '';
+        let pos = 0;
+        matches.forEach((m, k) => {
+          if (m.i < pos) return;
+          html += esc(text.slice(pos, m.i));
+          const cls = (k % 2 ? 'alt' : '') + (m.v === '' ? ' empty' : '');
+          html += `<mark class="${cls.trim()}" title="#${k + 1} @${m.i}">${esc(m.v)}</mark>`;
+          pos = m.i + m.v.length;
+        });
+        html += esc(text.slice(pos));
+        $('#hl').innerHTML = html || '&nbsp;';
+
+        // Trefferliste
+        $('#matches').innerHTML = matches.length
+          ? matches
+              .map((m, k) => {
+                const named = m.n ? Object.entries(m.n) : [];
+                const groups = m.g.map((g, gi) => `<span>$${gi + 1}</span><span>${g === undefined || g === null ? '<i class="muted">undefined</i>' : esc(g)}</span>`);
+                named.forEach(([n, v]) => groups.push(`<span>${esc(n)}</span><span>${v == null ? '<i class="muted">undefined</i>' : esc(v)}</span>`));
+                return `<div class="m-item"><div class="head"><span>${esc(t('match'))} ${k + 1}</span><span>${esc(t('at'))} ${m.i}–${m.i + m.v.length}</span></div>
+                  <div class="val">${esc(m.v) || '<i class="muted">(empty)</i>'}</div>
+                  ${groups.length ? `<div class="grp">${groups.join('')}</div>` : ''}</div>`;
+              })
+              .join('')
+          : `<p class="muted" style="margin:0">${esc(t('none'))}</p>`;
+
+        $('#replOut').textContent = res.replaced ?? '';
+      }
+
+      [pattern, subject, repl].forEach((el) => el.addEventListener('input', schedule));
+      $('#copyRe').addEventListener('click', () => {
+        const body = pattern.value.replace(/(^|[^\\])\//g, '$1\\/');
+        copy(`const re = /${body}/${flagStr()};`, 'JS');
+      });
+      // #endregion
+
+      // #region Vorlagen + Spickzettel
+      PRESETS.forEach(([name, src, f]) => {
+        const b = document.createElement('button');
+        b.className = 'btn sm';
+        b.textContent = name;
+        b.addEventListener('click', () => {
+          pattern.value = src;
+          flags.clear();
+          [...f].forEach((x) => flags.add(x));
+          renderFlags();
+          schedule();
+          pattern.focus();
+        });
+        $('#presets').appendChild(b);
+      });
+
+      const INSERT = { '\\D \\W \\S': '\\D', '^ $': '^', '(…)': '()', '(?:…)': '(?:)', '(?<name>…)': '(?<name>)', '(?=…)': '(?=)', '(?!…)': '(?!)', '(?<=…)': '(?<=)' };
+      function renderCheat() {
+        const c = t('c');
+        $('#cheat').innerHTML = '';
+        Object.entries(c).forEach(([tok, desc]) => {
+          const b = document.createElement('button');
+          b.innerHTML = `<code>${esc(tok)}</code><span>${esc(desc)}</span>`;
+          b.addEventListener('click', () => {
+            const ins = INSERT[tok] ?? tok;
+            const { selectionStart: a, selectionEnd: z, value } = pattern;
+            pattern.value = value.slice(0, a) + ins + value.slice(z);
+            // Cursor in Klammern setzen, falls vorhanden
+            const caret = ins.endsWith(')') ? a + ins.length - 1 : a + ins.length;
+            pattern.focus();
+            pattern.setSelectionRange(caret, caret);
+            schedule();
+          });
+          $('#cheat').appendChild(b);
+        });
+      }
+      // #endregion
+
+      TV.init({
+        glyph: '.*',
+        strings: STRINGS,
+        onLang: () => {
+          renderFlags();
+          renderCheat();
+          if (last) render(last);
+        },
+      });
+
+      // Start: Zustand aus URL (#re=…&f=…) oder Beispiel
+      const q = new URLSearchParams(location.hash.slice(1));
+      if (q.has('re')) {
+        pattern.value = q.get('re');
+        flags.clear();
+        [...(q.get('f') || '')].filter((f) => FLAG_LIST.includes(f)).forEach((f) => flags.add(f));
+      } else {
+        pattern.value = PRESETS[0][1];
+        flags.add('i');
+      }
+      subject.value = SAMPLE;
+      renderFlags();
+      run();
+      pattern.focus();
+    </script>
+  </body>
+</html>

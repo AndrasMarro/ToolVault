@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <title>ToolVault</title>
+    <meta
+      name="description"
+      content="ToolVault – small, fast browser tools: converters, formatters, generators and decoders. Everything runs locally."
+    />
 
     <!-- Favicon: Hammer, Farbe folgt per JS dem aktiven Theme -->
     <link rel="icon" id="favicon" type="image/svg+xml" />
@@ -31,7 +35,8 @@
          Jedes Theme ist nur ein Satz Variablen. Eigenes Theme bauen:
          einen [data-theme="..."]-Block kopieren, Name + Hex-Werte ändern,
          den Namen unten ins THEMES-Array (im <script>) eintragen.
-         Aktives Theme steht im <html data-theme="...">. */
+         Aktives Theme steht im <html data-theme="...">.
+         --swatch = Farbe des Theme-Punkts oben rechts (Standard: --accent). */
       :root {
         /* Default-Werte, werden vom aktiven Theme überschrieben */
         --bg: #15120f;
@@ -45,6 +50,10 @@
         --accent-soft: rgba(232, 162, 60, 0.14);
       }
 
+      /* Punktfarbe pro Theme neu setzen, damit sie nicht vom aktiven Theme erbt */
+      [data-theme] {
+        --swatch: var(--accent);
+      }
       [data-theme='graphite'] {
         /* warmes Anthrazit + Ringelblume */
         --bg: #15120f;
@@ -70,14 +79,15 @@
         --accent-soft: rgba(79, 209, 224, 0.14);
       }
       [data-theme='paper'] {
-        /* Helles Papier + Tinte (Punkt = weiss) */
+        /* Helles Papier + rote Tinte (Punkt = weiss) */
         --bg: #f2eee6;
         --surface: #fbf8f2;
         --surface-2: #ffffff;
         --border: #dad2c4;
         --text: #20201c;
         --text-muted: #6e6658;
-        --accent: #f2eee6;
+        --swatch: #f2eee6;
+        --accent: #d6492f;
         --accent-contrast: #fff7f2;
         --accent-soft: rgba(214, 73, 47, 0.1);
       }
@@ -555,8 +565,8 @@
           searchAria: 'Tools durchsuchen',
           themesAria: 'Farbschema wählen',
           langAria: 'Sprache wählen',
-          metaAll: (n) => n + ' Tools · „/“ zum Fokussieren',
-          metaSome: (v, n) => v + ' von ' + n + ' Tools · „/“ zum Fokussieren',
+          metaAll: (n) => n + ' Tools · „/“ oder „f“ zum Fokussieren',
+          metaSome: (v, n) => v + ' von ' + n + ' Tools · „/“ oder „f“ zum Fokussieren',
           empty: (q) => 'Keine Tools für „' + q + '“. Anderes Stichwort versuchen.',
           builtBy: 'gebaut von',
           linkedin: 'LinkedIn',
@@ -566,8 +576,8 @@
           searchAria: 'Search tools',
           themesAria: 'Choose colour theme',
           langAria: 'Choose language',
-          metaAll: (n) => n + ' tools · press “/” or "f" to focus',
-          metaSome: (v, n) => v + ' of ' + n + ' tools · press “/” or "f" to focus',
+          metaAll: (n) => n + ' tools · press “/” or “f” to focus',
+          metaSome: (v, n) => v + ' of ' + n + ' tools · press “/” or “f” to focus',
           empty: (q) => 'No tools for “' + q + '”. Try another keyword.',
           builtBy: 'built by',
           linkedin: 'LinkedIn',
@@ -591,37 +601,36 @@
         {
           name: 'QR-Decoder',
           desc: {
-            de: 'QR-Codes dekodieren und Daten extrahieren.',
-            en: 'Decode QR codes and extract data.',
+            de: 'QR-Codes per Bild oder Kamera dekodieren und analysieren.',
+            en: 'Decode and analyse QR codes from images or the camera.',
           },
           url: './qr-decoder/qr-decoder.html',
-          tags: ['qr', 'generator', 'decoder', 'scan'],
+          tags: ['qr', 'decoder', 'scan', 'camera'],
         },
         {
           name: { de: 'Einheiten-Rechner', en: 'Unit Converter' },
           desc: {
-            de: 'Längen, Gewichte und Temperaturen umrechnen.',
-            en: 'Convert lengths, weights and temperatures.',
+            de: '15+ Einheiten-Kategorien, Physik, Chemie und Live-Wechselkurse.',
+            en: '15+ unit categories, physics, chemistry and live exchange rates.',
           },
           url: './unit-converter/unit-converter.html',
           tags: {
-            de: ['rechner', 'umrechnen', 'einheiten'],
-            en: ['converter', 'units', 'convert'],
+            de: ['rechner', 'umrechnen', 'einheiten', 'währung'],
+            en: ['converter', 'units', 'convert', 'currency'],
           },
         },
         {
           name: { de: 'FileFlip', en: 'FileFlip' },
           desc: {
-            de: 'Dateien flippen und umwandeln.',
-            en: 'Flip and convert files.',
+            de: 'PDFs erstellen, zusammenführen, teilen; Bilder umwandeln und komprimieren.',
+            en: 'Create, merge and split PDFs; convert and compress images.',
           },
           url: './fileflip/fileflip.html',
           tags: {
-            de: ['datei', 'umwandeln', 'pdf', 'jpg'],
-            en: ['file', 'convert', 'pdf', 'jpg'],
+            de: ['datei', 'umwandeln', 'pdf', 'jpg', 'favicon'],
+            en: ['file', 'convert', 'pdf', 'jpg', 'favicon'],
           },
         },
-
         {
           name: { de: 'Farb-Konverter', en: 'Color Converter' },
           desc: {
@@ -700,8 +709,6 @@
             en: ['time', 'date', 'unix', 'timezone', 'timestamp'],
           },
         },
-
-        /* ----- Ab hier Beispiele: anpassen oder löschen ----- */
       ];
       // #endregion
 
@@ -777,12 +784,13 @@
       }
       const themesEl = $('#themes');
       THEMES.forEach((t) => {
-        // Akzentfarbe des Punktes aus dem jeweiligen Theme-Block holen
+        // Punktfarbe (--swatch, sonst --accent) aus dem jeweiligen Theme-Block holen
         const probe = document.createElement('div');
         probe.setAttribute('data-theme', t.id);
         probe.style.display = 'none';
         document.body.appendChild(probe);
-        const accent = getComputedStyle(probe).getPropertyValue('--accent').trim();
+        const cs = getComputedStyle(probe);
+        const accent = (cs.getPropertyValue('--swatch') || cs.getPropertyValue('--accent')).trim();
         probe.remove();
 
         const b = document.createElement('button');
@@ -938,9 +946,13 @@
           search.blur();
         }
       });
-      // "/" von überall fokussiert die Suche
+      // "/" oder "f" von überall fokussiert die Suche – aber nicht beim Tippen
+      // und nicht mit Ctrl/Cmd/Alt (Ctrl+F = Browser-Suche bleibt frei)
       document.addEventListener('keydown', (e) => {
-        if (e.key === '/' || (e.key === 'f' && document.activeElement !== search)) {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const el = document.activeElement;
+        if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+        if (e.key === '/' || e.key === 'f') {
           e.preventDefault();
           search.focus();
         }

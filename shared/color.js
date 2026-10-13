@@ -272,14 +272,14 @@
       const er = r - sr,
         eg = g - sg,
         eb = b - sb;
-      // Fehler-Umverteilung (Fidaner et al.)
-      d[i] = r + strength * 0;
-      d[i + 1] = g + strength * (0.7 * er + eg);
-      d[i + 2] = b + strength * (0.7 * er + eb);
+      // Fehler-Umverteilung nach Fidaner et al.: Rot-Fehler auf Grün/Blau,
+      // bei Tritan umgekehrt der Blau-Fehler auf Rot/Grün
       if (type === 'tritan') {
-        d[i] = r + strength * (eb * 0.7 + er);
-        d[i + 1] = g + strength * (eb * 0.7 + eg);
-        d[i + 2] = b;
+        d[i] = r + strength * (0.7 * eb + er);
+        d[i + 1] = g + strength * (0.7 * eb + eg);
+      } else {
+        d[i + 1] = g + strength * (0.7 * er + eg);
+        d[i + 2] = b + strength * (0.7 * er + eb);
       }
     }
     return img;

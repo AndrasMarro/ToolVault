@@ -11,6 +11,7 @@
 <!-- Hub-Basis (Themes, Kopfzeile) vor dem eigenen Stil, Hub-Skin danach -->
 <link rel="stylesheet" href="../shared/tv.css">
 <script src="../shared/tv.js"></script>
+<script src="i18n-de.js"></script>
 <style>
   /* =========================================================
      Design tokens — engineering paper meets instrument panel
@@ -777,6 +778,9 @@
     <a class="wordmark" href="../index.html"><span class="prompt">~/</span><span class="hub">ToolVault</span><span class="prompt">/</span><span class="tool">unit</span></a>
     <div class="topbar-right">
       <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+      <div class="lang" id="lang" role="group" aria-label="Language">
+        <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span><button data-lang="en">EN</button>
+      </div>
     </div>
   </header>
 
@@ -842,7 +846,7 @@
   </div>
 
   <footer class="footer">
-    <a href="../index.html">← ToolVault</a><span>·</span><span>Unit Converter v2.1</span><span>·</span><span>runs locally in your browser</span><span>·</span><span id="tv-year"></span>
+    <a href="../index.html">← ToolVault</a><span>·</span><span>Unit Converter v2.2</span><span>·</span><span>runs locally in your browser</span><span>·</span><span id="tv-year"></span>
   </footer>
 
 </div>
@@ -2177,7 +2181,15 @@ function tickClock() {
 // ============================================================
 function init() {
   // Themes kommen vom ToolVault-Hub (Punkte oben rechts, geteilt mit der Startseite)
-  if (window.TV) TV.init({ glyph: 'u', lang: false });
+  // Sprache: Übersetzungsschicht (i18n-de.js) folgt dem Hub-Sprachumschalter
+  if (window.UnitI18n) UnitI18n.start();
+  if (window.TV) {
+    TV.init({
+      glyph: 'u',
+      strings: { de: { pageTitle: 'Einheiten-Rechner' }, en: { pageTitle: 'Unit Converter' } },
+      onLang: (l) => window.UnitI18n && UnitI18n.set(l),
+    });
+  }
   document.querySelectorAll('.mode').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));

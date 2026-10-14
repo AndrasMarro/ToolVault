@@ -74,17 +74,129 @@
       localStorage.setItem(KEY, m);
     } catch (e) {}
     paint();
+    frame();
   }
+
+  // #region Hintergrund-Szene: Scroll-Parallax + Maus-Licht, alles in einem rAF
+  let scene = null;
+  let queued = false;
+  const spot = { x: innerWidth / 2, y: innerHeight * 0.3, tx: innerWidth / 2, ty: innerHeight * 0.3, on: false };
+  const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  function buildScene() {
+    const bg = document.createElement('div');
+    bg.className = 'tv-bg';
+    bg.setAttribute('aria-hidden', 'true');
+    bg.innerHTML =
+      '<div class="tv-layer tv-warm"><i></i><i></i></div>' +
+      '<div class="tv-layer tv-cool"><i></i><i></i></div>' +
+      '<div class="tv-halo"><span></span></div>' +
+      '<div class="tv-grid"><b></b></div>' +
+      '<div class="tv-spot"></div>';
+    const bar = document.createElement('div');
+    bar.className = 'tv-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.prepend(bg, bar);
+    const $ = (s) => bg.querySelector(s);
+    scene = { warm: $('.tv-warm'), cool: $('.tv-cool'), halo: $('.tv-halo'), grid: $('.tv-grid b'), spot: $('.tv-spot'), bar };
+    addEventListener('scroll', frame, { passive: true });
+    addEventListener('resize', frame, { passive: true });
+    if (finePointer) {
+      addEventListener(
+        'pointermove',
+        (e) => {
+          spot.tx = e.clientX;
+          spot.ty = e.clientY;
+          if (!spot.on) {
+            spot.on = true;
+            scene.spot.classList.add('on');
+          }
+          frame();
+        },
+        { passive: true },
+      );
+      document.documentElement.addEventListener('pointerleave', () => {
+        spot.on = false;
+        scene.spot.classList.remove('on');
+      });
+    }
+    frame();
+  }
+  function frame() {
+    if (scene && !queued) {
+      queued = true;
+      requestAnimationFrame(render);
+    }
+  }
+  function render() {
+    queued = false;
+    const y = scrollY;
+    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    const p = max > 0 ? Math.min(1, y / max) : 0;
+    scene.bar.style.opacity = max > 80 && mode !== 'off' ? 1 : 0;
+    scene.bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
+    // Parallax nur im Modus „animiert“ – sonst ruhige Grundstellung
+    const k = mode === 'on' ? 1 : 0;
+    scene.warm.style.transform = 'translate3d(0,' + (-y * 0.06 * k).toFixed(1) + 'px,0)';
+    scene.warm.style.opacity = (1 - p * 0.7 * k).toFixed(3);
+    scene.cool.style.transform = 'translate3d(0,' + (-y * 0.16 * k).toFixed(1) + 'px,0)';
+    scene.cool.style.opacity = (0.35 + p * 0.65 * k).toFixed(3);
+    scene.halo.style.transform =
+      'translate3d(0,' + (-y * 0.22 * k).toFixed(1) + 'px,0) rotate(' + (p * 160 * k).toFixed(2) + 'deg) scale(' + (1 + p * 0.3 * k).toFixed(3) + ')';
+    scene.grid.style.transform = 'translate3d(0,' + (-((y * 0.35 * k) % 26)).toFixed(1) + 'px,0)';
+    // Licht folgt der Maus mit Federung (lerp), läuft aus, sobald es angekommen ist
+    if (k && spot.on) {
+      spot.x += (spot.tx - spot.x) * 0.12;
+      spot.y += (spot.ty - spot.y) * 0.12;
+      scene.spot.style.transform = 'translate3d(' + spot.x.toFixed(1) + 'px,' + spot.y.toFixed(1) + 'px,0)';
+      if (Math.abs(spot.tx - spot.x) + Math.abs(spot.ty - spot.y) > 0.6) frame();
+    }
+  }
+  // #endregion
+
+  // #region Einblenden beim Hinscrollen
+  function setupReveal() {
+    if (mode === 'off' || !('IntersectionObserver' in window)) return;
+    const all = Array.from(
+      document.querySelectorAll('.grid > .card, .wrap .box, .panel-grid > .panel, .container .card, .tool-grid > .card'),
+    );
+    // nur sichtbare Elemente unterhalb des Bildschirms, keine verschachtelten
+    const els = all.filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.height > 0 && r.top > innerHeight && !all.some((o) => o !== el && o.contains(el));
+    });
+    if (!els.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        let n = 0;
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          const el = e.target;
+          io.unobserve(el);
+          el.style.transitionDelay = Math.min(n++, 5) * 70 + 'ms';
+          el.classList.add('tv-in');
+          const done = (ev) => {
+            if (ev.target !== el || ev.propertyName !== 'transform') return;
+            el.style.animation = 'none'; // Lade-Animation nicht nachträglich noch einmal abspielen
+            el.classList.remove('tv-reveal', 'tv-in');
+            el.style.transitionDelay = '';
+            el.removeEventListener('transitionend', done);
+          };
+          el.addEventListener('transitionend', done);
+        });
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+    );
+    els.forEach((el) => {
+      el.classList.add('tv-reveal');
+      io.observe(el);
+    });
+  }
+  // #endregion
 
   function start() {
     const embedded = root.classList.contains('embed');
-    if (!embedded && !document.querySelector('.tv-bg')) {
-      const bg = document.createElement('div');
-      bg.className = 'tv-bg';
-      bg.setAttribute('aria-hidden', 'true');
-      bg.innerHTML = '<i></i><i></i><i></i><b></b>';
-      document.body.prepend(bg);
-    }
+    if (!embedded && !document.querySelector('.tv-bg')) buildScene();
     const bar = document.querySelector('.topbar-right');
     if (bar && !embedded) {
       btn = document.createElement('button');
@@ -107,6 +219,7 @@
     }
     // Karten nacheinander einblenden
     document.querySelectorAll('.grid > .card').forEach((c, i) => c.style.setProperty('--i', i));
+    if (!embedded) setupReveal();
     // Pointer-Licht auf Karten und Boxen (nur Maus)
     if (matchMedia('(hover: hover)').matches) {
       document.addEventListener('pointermove', (e) => {

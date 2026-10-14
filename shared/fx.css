@@ -52,7 +52,12 @@
 }
 /* #endregion */
 
-/* #region Hintergrund: weiche Farbwolken + feines Punktraster */
+/* #region Hintergrund: Szene aus Ebenen, die auf Scrollen und Maus reagiert
+   .tv-warm / .tv-cool  Farbwolken – oben warm (Akzent), beim Scrollen kühler
+   .tv-halo             rotierender Farbring oben, dreht/wächst beim Scrollen
+   .tv-grid             Punktraster, scrollt langsamer als der Inhalt (Parallax)
+   .tv-spot             weicher Lichtkegel, folgt der Maus mit Federung
+   Die Transformationen beim Scrollen setzt fx.js direkt per JS (ein rAF pro Frame). */
 html {
   background: var(--bg);
 }
@@ -68,78 +73,177 @@ html body {
   pointer-events: none;
   contain: strict;
 }
-.tv-bg i {
+.tv-layer {
+  position: absolute;
+  inset: -25vh -10vw;
+  will-change: transform, opacity;
+}
+.tv-layer i {
   position: absolute;
   width: 62vmax;
   height: 62vmax;
   border-radius: 50%;
   opacity: var(--glow-alpha);
-  will-change: transform;
-  animation: tv-drift 22s ease-in-out infinite alternate;
 }
-.tv-bg i:nth-child(1) {
-  left: -18vmax;
-  top: -24vmax;
+.tv-warm i:nth-child(1) {
+  left: -12vmax;
+  top: 0;
   background: radial-gradient(circle, var(--glow-1) 0%, transparent 62%);
 }
-.tv-bg i:nth-child(2) {
-  right: -22vmax;
-  top: 8vh;
+.tv-warm i:nth-child(2) {
+  right: -20vmax;
+  top: 22vh;
   background: radial-gradient(circle, var(--glow-2) 0%, transparent 62%);
-  animation-duration: 26s;
-  animation-delay: -9s;
 }
-.tv-bg i:nth-child(3) {
-  left: 18vw;
-  bottom: -34vmax;
+.tv-cool {
+  opacity: 0.35;
+}
+.tv-cool i:nth-child(1) {
+  left: 10vw;
+  bottom: -10vmax;
   background: radial-gradient(circle, var(--glow-3) 0%, transparent 62%);
-  animation-duration: 30s;
-  animation-delay: -18s;
 }
-/* Punktraster, oben sichtbarer, unten auslaufend */
-.tv-bg b {
+.tv-cool i:nth-child(2) {
+  right: -14vmax;
+  bottom: 18vh;
+  background: radial-gradient(circle, color-mix(in srgb, var(--glow-3) 50%, var(--glow-1)) 0%, transparent 62%);
+}
+/* Farbring: Lichtstreifen auf einem Ring, unscharf, nur oben angeschnitten sichtbar */
+.tv-halo {
+  position: absolute;
+  left: 50%;
+  top: -62vmax;
+  width: 110vmax;
+  height: 110vmax;
+  margin-left: -55vmax;
+  will-change: transform;
+}
+.tv-halo span {
   position: absolute;
   inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 6%,
+    var(--glow-1) 13%,
+    transparent 22%,
+    var(--glow-2) 34%,
+    transparent 45%,
+    var(--glow-3) 58%,
+    transparent 70%,
+    var(--glow-1) 83%,
+    transparent 94%
+  );
+  -webkit-mask: radial-gradient(closest-side, transparent 64%, #000 74%, #000 80%, transparent 92%);
+  mask: radial-gradient(closest-side, transparent 64%, #000 74%, #000 80%, transparent 92%);
+  filter: blur(26px);
+  opacity: calc(var(--glow-alpha) * 1.5);
+}
+/* Punktraster: Maske bleibt stehen, nur das Muster wandert */
+.tv-grid {
+  position: absolute;
+  inset: 0;
+  mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 0%, transparent 78%);
+  opacity: 0.55;
+}
+.tv-grid b {
+  position: absolute;
+  inset: -26px 0;
   background-image: radial-gradient(color-mix(in srgb, var(--text) 16%, transparent) 1px, transparent 1.4px);
   background-size: 26px 26px;
-  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 0%, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 0%, transparent 75%);
-  opacity: 0.55;
+  will-change: transform;
+}
+.tv-spot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44vmax;
+  height: 44vmax;
+  margin: -22vmax 0 0 -22vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 65%);
+  opacity: 0;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+[data-motion='on'] .tv-spot.on {
+  opacity: 1;
+}
+/* Eigenbewegung nur im Modus „animiert“; !important schlägt globale Reduced-Motion-Regeln,
+   weil der Schalter eine bewusste Wahl ist */
+[data-motion='on'] .tv-layer i {
+  animation: tv-drift 24s ease-in-out infinite alternate !important;
+}
+[data-motion='on'] .tv-layer i:nth-child(2) {
+  animation-duration: 30s !important;
+  animation-delay: -11s !important;
+}
+[data-motion='on'] .tv-cool i {
+  animation-duration: 28s !important;
+  animation-delay: -6s !important;
+}
+[data-motion='on'] .tv-halo span {
+  animation: tv-spin 70s linear infinite !important;
 }
 @keyframes tv-drift {
   0% {
-    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  33% {
-    transform: translate3d(22vmax, 10vmax, 0) scale(1.18) rotate(40deg);
-  }
-  66% {
-    transform: translate3d(-8vmax, 24vmax, 0) scale(0.9) rotate(-30deg);
+  50% {
+    transform: translate3d(16vmax, 9vmax, 0) scale(1.15);
   }
   100% {
-    transform: translate3d(14vmax, -10vmax, 0) scale(1.1) rotate(20deg);
+    transform: translate3d(-8vmax, 18vmax, 0) scale(0.92);
   }
 }
-/* Wer den Schalter auf „animiert“ hat, bekommt Bewegung – auch wenn eine
-   allgemeine Reduced-Motion-Regel (tv.css/Hub) sonst alle Animationen stoppt */
-[data-motion='on'] .tv-bg i {
-  animation: tv-drift 22s ease-in-out infinite alternate !important;
-}
-[data-motion='on'] .tv-bg i:nth-child(2) {
-  animation-duration: 26s !important;
-  animation-delay: -9s !important;
-}
-[data-motion='on'] .tv-bg i:nth-child(3) {
-  animation-duration: 30s !important;
-  animation-delay: -18s !important;
-}
-/* Schalter: angehalten / aus */
-[data-motion='still'] .tv-bg i,
-[data-motion='off'] .tv-bg i {
-  animation-play-state: paused;
+@keyframes tv-spin {
+  to {
+    transform: rotate(1turn);
+  }
 }
 [data-motion='off'] .tv-bg {
   display: none;
+}
+
+/* Scroll-Fortschritt oben */
+.tv-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 50;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+  background: linear-gradient(90deg, var(--glow-1), var(--glow-2), var(--glow-3));
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Einblenden beim Hinscrollen (fx.js setzt die Klassen nur bei Elementen unterhalb des Bildschirms) */
+.tv-reveal {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) scale(0.985);
+  animation: none !important;
+}
+.tv-reveal.tv-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s
+      linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%, 1.067 22.5%, 1.089 26%,
+        1.079 30.3%, 1.049 36%, 1.024 42.6%, 1.011 50.3%, 1.004 59.2%, 1.001 69.3%, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tv-reveal {
+    transform: none;
+  }
 }
 /* #endregion */
 
@@ -527,7 +631,7 @@ textarea {
     -webkit-backdrop-filter: blur(12px) saturate(140%);
     backdrop-filter: blur(12px) saturate(140%);
   }
-  .tv-bg i {
+  .tv-layer i {
     width: 90vmax;
     height: 90vmax;
   }

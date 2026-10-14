@@ -98,6 +98,7 @@
         gap: 10px;
       }
       .name-main {
+        flex: none;
         font-size: 1.35rem;
         font-weight: 600;
         line-height: 1.2;
@@ -387,13 +388,26 @@
         outline: 2px solid var(--text);
         outline-offset: 2px;
       }
+      @media (max-width: 560px) {
+        .name-panel {
+          height: 236px !important;
+        }
+        .name-row {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 2px;
+        }
+        .name-row .v > span:nth-child(2) {
+          flex: none;
+          max-width: 100%;
+        }
+      }
       @media (max-width: 900px) {
         .head {
           grid-template-columns: 130px minmax(0, 1fr);
           height: auto;
         }
         .name-panel {
-          height: 150px;
+          height: 178px;
         }
         .name-panel {
           grid-column: 1 / -1;

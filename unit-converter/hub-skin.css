@@ -23,7 +23,7 @@
   --font-mono: var(--mono);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
-[data-theme='paper'] {
+[data-theme='paper']:root {
   --display-bg: #211d18;
   --display-accent: #ff7a3d;
 }

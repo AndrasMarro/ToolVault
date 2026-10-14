@@ -49,7 +49,9 @@
   try {
     mode = localStorage.getItem(KEY);
   } catch (e) {}
-  if (!MODES.includes(mode)) mode = 'on'; // anhalten/ausblenden über den Schalter oben
+  // Standard: animiert – auf Handys/Touch-Geräten angehalten (Akku + Performance).
+  // Eine eigene Wahl über den Schalter oben gilt immer.
+  if (!MODES.includes(mode)) mode = matchMedia('(max-width: 760px), (pointer: coarse)').matches ? 'still' : 'on';
   root.dataset.motion = mode;
 
   const svg = (inner, cls = '') =>

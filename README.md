@@ -7,8 +7,8 @@ Everything runs locally in the browser – no build step, no backend. Open `inde
 | --- | --- | --- |
 | QR Studio | `qr/` | Design and export QR codes (link, Wi-Fi, contact, event …) with logos, gradients and frames, or read them |
 | Unit Converter | `unit-converter/` | 15+ unit categories, physics, chemistry, live FX rates (DE/EN) |
-| FileFlip | `fileflip/` | Create, merge and split PDFs; convert and compress images |
-| Video Converter | `video/` | Video to MP4/WebM/GIF, audio to MP3/WAV, trim and resize (ffmpeg.wasm) |
+| FileFlip | `fileflip/` | Create, merge and split PDFs; convert and compress images; Video tab: MP4/WebM/GIF, MP3/WAV, trim and resize (ffmpeg.wasm, page in `video/`) |
+| Icon Builder | `icon/` | Design app and SVG icons (1,890 Lucide glyphs, shapes, text, emoji, gradients, patterns, shadows) and export for iOS, Android, web/PWA, macOS and Windows as one ZIP |
 | Color Converter | `color/` | Colour wheel with harmonies, colour names, gradients, WCAG contrast, all formats |
 | Color Vision | `vision/` | Name colours in photos or via camera, colour vision test, simulate and compensate colour blindness |
 | JSON Formatter | `json/` | Validate, format, minify, repair and explore JSON as a tree |

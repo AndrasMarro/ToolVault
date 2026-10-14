@@ -21,7 +21,9 @@ Everything runs locally in the browser – no build step, no backend. Open `inde
 | Diff Checker | `diff/` | Compare texts by line, word or character, with patch export |
 | Generator | `generator/` | UUIDs, ULIDs, placeholder text, random numbers, dice and draws |
 
-`shared/` holds the hub look for tool pages (`tv.css`, `tv.js`), the colour library (`color.js`)
+`shared/` holds the hub look for tool pages (`tv.css`, `tv.js`), the effects layer loaded last on every page
+(`fx.css`, `fx.js`: Black theme, animated glow background with a freeze/off switch, glass panels, tool icons,
+entry animations, mobile tweaks – remove both files to get the flat look back), the colour library (`color.js`)
 and vendored third-party libraries (`shared/vendor/`, see its README for licences).
 `qr-decoder/` only redirects to QR Studio so old links keep working.
 

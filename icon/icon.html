@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Icon Builder: design app icons and SVG icons from 1,800+ glyphs, shapes, text and emoji – with gradients, patterns and shadows – and export everything for iOS, Android, PWA, favicon, macOS and Windows."
+    />
+    <title>Icon Builder · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css" />
+    <link rel="stylesheet" href="icon.css" />
+    <script src="../shared/tv.js"></script>
+    <script src="../shared/color.js"></script>
+    <script src="../shared/vendor/lucide.js"></script>
+    <script src="../shared/vendor/jszip.min.js"></script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">icon</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <div class="ib">
+        <!-- Links: Bühne + Vorschauen -->
+        <div class="ib-left">
+          <div class="box stage-box">
+            <h2 class="box-title">
+              <span data-i18n="canvas"></span>
+              <span class="seg small" id="guideSeg">
+                <button data-guide="none" data-i18n="g_none"></button>
+                <button data-guide="ios">iOS</button>
+                <button data-guide="android">Android</button>
+                <button data-guide="grid" data-i18n="g_grid"></button>
+              </span>
+            </h2>
+            <div class="stage" id="stage" tabindex="0" data-i18n-title="stageHint">
+              <div class="checker"></div>
+              <div id="art"></div>
+              <svg id="guides" viewBox="0 0 1024 1024" aria-hidden="true"></svg>
+            </div>
+            <div class="row stage-tools">
+              <button class="btn sm" id="undo" data-i18n-title="undo">↶</button>
+              <button class="btn sm" id="redo" data-i18n-title="redo">↷</button>
+              <button class="btn sm" id="random" data-i18n="random"></button>
+              <span class="spacer"></span>
+              <button class="btn sm" id="saveProj" data-i18n="saveProj"></button>
+              <label class="btn sm file-btn"
+                ><span data-i18n="loadProj"></span><input type="file" id="loadProj" accept=".json,application/json"
+              /></label>
+            </div>
+          </div>
+
+          <div class="box">
+            <h2 class="box-title"><span data-i18n="mockups"></span></h2>
+            <div class="mock" id="mock">
+              <div class="phone ios">
+                <div class="home">
+                  <div class="app"><img data-mock="sq" class="m-ios" alt="" /><span class="appname"></span></div>
+                  <div class="app ghost"><i></i><span>Mail</span></div>
+                  <div class="app ghost"><i></i><span>Maps</span></div>
+                  <div class="app ghost"><i></i><span>Notes</span></div>
+                </div>
+                <span class="cap">iOS</span>
+              </div>
+              <div class="phone android">
+                <div class="home">
+                  <div class="app"><img data-mock="sq" class="m-circle" alt="" /><span class="appname"></span></div>
+                  <div class="app"><img data-mock="sq" class="m-squircle" alt="" /><span class="appname"></span></div>
+                  <div class="app"><img data-mock="sq" class="m-tear" alt="" /><span class="appname"></span></div>
+                  <div class="app"><img data-mock="mono" class="m-circle themed" alt="" /><span data-i18n="themed"></span></div>
+                </div>
+                <span class="cap">Android</span>
+              </div>
+              <div class="desk">
+                <div class="tabbar light">
+                  <div class="tab"><img data-mock="fav" alt="" /><span class="appname"></span><b>×</b></div>
+                </div>
+                <div class="tabbar dark">
+                  <div class="tab"><img data-mock="fav" alt="" /><span class="appname"></span><b>×</b></div>
+                </div>
+                <div class="dock"><i></i><img data-mock="mac" alt="" /><i></i><i></i></div>
+                <span class="cap">Browser · macOS</span>
+              </div>
+            </div>
+            <div class="sizes" id="sizes"></div>
+            <div class="cvd" id="cvd"></div>
+          </div>
+        </div>
+
+        <!-- Rechts: Steuerung -->
+        <div class="ib-right">
+          <div class="seg ib-tabs" role="tablist" id="tabs">
+            <button role="tab" data-tab="templates" data-i18n="t_templates"></button>
+            <button role="tab" data-tab="bg" data-i18n="t_bg"></button>
+            <button role="tab" data-tab="layers" data-i18n="t_layers"></button>
+            <button role="tab" data-tab="export" data-i18n="t_export"></button>
+          </div>
+
+          <section class="box tab-panel" data-panel="templates">
+            <h2 class="box-title"><span data-i18n="templates"></span></h2>
+            <div class="tpl-grid" id="tplGrid"></div>
+            <p class="hint" data-i18n="tplHint"></p>
+          </section>
+
+          <section class="box tab-panel" data-panel="bg">
+            <h2 class="box-title"><span data-i18n="t_bg"></span></h2>
+            <div id="bgPanel"></div>
+          </section>
+
+          <section class="tab-panel" data-panel="layers">
+            <div class="box">
+              <h2 class="box-title">
+                <span data-i18n="t_layers"></span>
+                <span class="row add-row">
+                  <button class="btn sm" data-add="icon">+ Icon</button>
+                  <button class="btn sm" data-add="text" data-i18n="addText"></button>
+                  <button class="btn sm" data-add="shape" data-i18n="addShape"></button>
+                  <label class="btn sm file-btn"
+                    ><span data-i18n="addImage"></span><input type="file" id="addImage" accept="image/*,.svg"
+                  /></label>
+                </span>
+              </h2>
+              <ol class="layers" id="layerList"></ol>
+            </div>
+            <div class="box" id="layerPanel"></div>
+          </section>
+
+          <section class="box tab-panel" data-panel="export">
+            <h2 class="box-title"><span data-i18n="t_export"></span></h2>
+            <label class="field"
+              ><span data-i18n="appName"></span><input type="text" id="appName" maxlength="40" spellcheck="false"
+            /></label>
+            <div class="quick row">
+              <button class="btn" id="dlSvg">SVG</button>
+              <span class="png-pick">
+                <button class="btn" id="dlPng">PNG</button>
+                <select id="pngSize">
+                  <option>16</option>
+                  <option>32</option>
+                  <option>64</option>
+                  <option>128</option>
+                  <option>256</option>
+                  <option>512</option>
+                  <option selected>1024</option>
+                  <option>2048</option>
+                </select>
+              </span>
+              <button class="btn" id="dlIco">favicon.ico</button>
+              <button class="btn" id="copySvg" data-i18n="copySvg"></button>
+            </div>
+            <div class="targets" id="targets"></div>
+            <button class="btn primary big" id="dlZip"></button>
+            <div class="msg" id="exportMsg"></div>
+            <details class="snippet">
+              <summary data-i18n="snippet"></summary>
+              <pre class="out" id="headSnippet"></pre>
+              <button class="btn sm" data-copy="#headSnippet" data-i18n="copy"></button>
+            </details>
+          </section>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Icon Builder v1.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script src="icon.js"></script>
+  </body>
+</html>

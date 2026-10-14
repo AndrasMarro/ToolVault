@@ -18,6 +18,7 @@
     { id: 'moss', label: 'Moss', dot: '#9bd64a' },
     { id: 'plum', label: 'Plum', dot: '#ef8fb4' },
     { id: 'paper', label: 'Paper', dot: '#f2eee6' },
+    { id: 'black', label: 'Black', dot: '#000000' },
   ];
   const DEFAULT_THEME = 'graphite';
   const DEFAULT_LANG = 'en';

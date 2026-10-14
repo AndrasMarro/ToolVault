@@ -479,6 +479,8 @@
       }
       /* #endregion */
     </style>
+    <link rel="stylesheet" href="./shared/fx.css" />
+    <script src="./shared/fx.js"></script>
   </head>
 
   <body>
@@ -559,6 +561,7 @@
         { id: 'moss', label: 'Moss' },
         { id: 'plum', label: 'Plum' },
         { id: 'paper', label: 'Paper' },
+        { id: 'black', label: 'Black' },
       ];
       // #endregion
 
@@ -886,6 +889,15 @@
         id.className = 'card-id mono';
         id.textContent = String(i + 1).padStart(2, '0');
 
+        // Tool-Icon (aus shared/fx.js) + Nummer in einer Kopfzeile
+        const head = document.createElement('span');
+        head.className = 'card-head';
+        const icon = document.createElement('span');
+        icon.className = 'card-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        if (window.TVFX) icon.innerHTML = TVFX.svg(TVFX.icons[tool.url.split('/')[1]] || '');
+        head.append(icon, id);
+
         const name = document.createElement('span');
         name.className = 'card-name';
 
@@ -895,7 +907,7 @@
         const tagsEl = document.createElement('span');
         tagsEl.className = 'card-tags';
 
-        a.append(id, name, desc, tagsEl);
+        a.append(head, name, desc, tagsEl);
         grid.appendChild(a);
 
         // Suche kennt beide Sprachen + alle Tags

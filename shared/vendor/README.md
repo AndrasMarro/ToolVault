@@ -10,6 +10,8 @@ Bundled locally so the tools work without third-party CDNs.
 | `ffmpeg/ffmpeg.js`, `ffmpeg/814.ffmpeg.js` | [@ffmpeg/ffmpeg](https://github.com/ffmpegwasm/ffmpeg.wasm) (UMD build) | 0.12.15 | MIT |
 | `marked.js` | [marked](https://github.com/markedjs/marked) (UMD build) | 14.1.4 | MIT |
 | `purify.js` | [DOMPurify](https://github.com/cure53/DOMPurify) | 3.2.7 | MPL-2.0 or Apache-2.0 |
+| `jszip.min.js` | [JSZip](https://github.com/Stuk/jszip) | 3.10.2 | MIT or GPL-3.0 |
+| `lucide.js` | [lucide-static](https://lucide.dev) (icon nodes + first tags, compacted) | 1.57.0 | ISC |
 | `highlight.js` | [highlight.js](https://highlightjs.org/) (common languages build) | 11.11.1 | BSD-3-Clause |
 
 The ffmpeg core itself (`@ffmpeg/core` 0.12.10, GPL-2.0-or-later, ~31 MB WebAssembly) is not stored

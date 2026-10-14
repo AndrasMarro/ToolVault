@@ -19,8 +19,25 @@
     <link rel="stylesheet" href="../shared/tv.css" />
     <script src="../shared/tv.js"></script>
     <script src="../shared/vendor/ffmpeg/ffmpeg.js"></script>
+    <script>
+      // In FileFlip als Tab eingebettet: ohne eigenen Kopf/Fuss
+      if (location.search.includes('embed')) document.documentElement.classList.add('embed');
+      else if (!location.search) location.replace('../fileflip/fileflip.html#video');
+    </script>
 
     <style>
+      .embed body {
+        background: transparent;
+      }
+      .embed .topbar,
+      .embed .hero,
+      .embed .footer {
+        display: none;
+      }
+      .embed .wrap {
+        padding: 0;
+        max-width: none;
+      }
       .drop {
         display: flex;
         flex-direction: column;
@@ -293,7 +310,7 @@
       </section>
 
       <footer class="footer">
-        <a href="../index.html">← ToolVault</a><span>·</span><span>Video Converter v1.0</span><span>·</span
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Video Converter v1.1</span><span>·</span
         ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
       </footer>
     </div>

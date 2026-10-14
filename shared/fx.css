@@ -35,10 +35,6 @@
   --glow-2: #6d5dfc;
   --glow-3: #0ea5e9;
 }
-[data-theme='moss'] {
-  --glow-2: #14b8a6;
-  --glow-3: #ca8a04;
-}
 [data-theme='plum'] {
   --glow-2: #8b5cf6;
   --glow-3: #f97316;
@@ -79,7 +75,7 @@ html body {
   border-radius: 50%;
   opacity: var(--glow-alpha);
   will-change: transform;
-  animation: tv-drift 28s var(--ease-out) infinite alternate;
+  animation: tv-drift 22s ease-in-out infinite alternate;
 }
 .tv-bg i:nth-child(1) {
   left: -18vmax;
@@ -90,14 +86,14 @@ html body {
   right: -22vmax;
   top: 8vh;
   background: radial-gradient(circle, var(--glow-2) 0%, transparent 62%);
-  animation-duration: 34s;
+  animation-duration: 26s;
   animation-delay: -9s;
 }
 .tv-bg i:nth-child(3) {
   left: 18vw;
   bottom: -34vmax;
   background: radial-gradient(circle, var(--glow-3) 0%, transparent 62%);
-  animation-duration: 40s;
+  animation-duration: 30s;
   animation-delay: -18s;
 }
 /* Punktraster, oben sichtbarer, unten auslaufend */
@@ -112,14 +108,30 @@ html body {
 }
 @keyframes tv-drift {
   0% {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
   }
-  50% {
-    transform: translate3d(9vmax, 6vmax, 0) scale(1.12);
+  33% {
+    transform: translate3d(22vmax, 10vmax, 0) scale(1.18) rotate(40deg);
+  }
+  66% {
+    transform: translate3d(-8vmax, 24vmax, 0) scale(0.9) rotate(-30deg);
   }
   100% {
-    transform: translate3d(-6vmax, 11vmax, 0) scale(0.94);
+    transform: translate3d(14vmax, -10vmax, 0) scale(1.1) rotate(20deg);
   }
+}
+/* Wer den Schalter auf „animiert“ hat, bekommt Bewegung – auch wenn eine
+   allgemeine Reduced-Motion-Regel (tv.css/Hub) sonst alle Animationen stoppt */
+[data-motion='on'] .tv-bg i {
+  animation: tv-drift 22s ease-in-out infinite alternate !important;
+}
+[data-motion='on'] .tv-bg i:nth-child(2) {
+  animation-duration: 26s !important;
+  animation-delay: -9s !important;
+}
+[data-motion='on'] .tv-bg i:nth-child(3) {
+  animation-duration: 30s !important;
+  animation-delay: -18s !important;
 }
 /* Schalter: angehalten / aus */
 [data-motion='still'] .tv-bg i,
@@ -167,8 +179,7 @@ nav.tabs,
   position: relative;
 }
 @media (hover: hover) {
-  .grid > .card::after,
-  .box::after {
+  [data-motion='on'] .grid > .card::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -176,14 +187,13 @@ nav.tabs,
     pointer-events: none;
     opacity: 0;
     background: radial-gradient(
-      420px circle at var(--mx, 50%) var(--my, 0%),
-      color-mix(in srgb, var(--accent) 10%, transparent),
-      transparent 60%
+      320px circle at var(--mx, 50%) var(--my, 0%),
+      color-mix(in srgb, var(--accent) 6%, transparent),
+      transparent 65%
     );
     transition: opacity 0.4s var(--ease-out);
   }
-  .grid > .card:hover::after,
-  .box:hover::after {
+  [data-motion='on'] .grid > .card:hover::after {
     opacity: 1;
   }
 }
@@ -331,12 +341,27 @@ nav.tabs,
   animation-delay: calc(var(--i, 0) * 45ms + 120ms);
 }
 .grid > .card:hover,
-.grid > .card.is-active {
-  transform: translateY(-4px);
+.grid.kbd > .card.is-active {
+  transform: translateY(-2px);
   background-color: color-mix(in srgb, var(--surface-2) var(--glass), transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent),
-    0 22px 44px -22px color-mix(in srgb, var(--accent) 45%, rgba(0, 0, 0, 0.8));
+    0 16px 32px -24px color-mix(in srgb, var(--accent) 35%, rgba(0, 0, 0, 0.8));
+}
+/* Der Hub merkt sich immer die erste Karte für Enter – sichtbar nur bei Pfeiltasten-Navigation */
+.grid:not(.kbd) > .card.is-active:not(:hover) {
+  transform: none;
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+  background-color: color-mix(in srgb, var(--surface) var(--glass), transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text) 7%, transparent),
+    var(--lift);
+}
+/* Animationen aus → auch kein Anheben/Drehen beim Überfahren */
+[data-motion='off'] .grid > .card:hover,
+[data-motion='off'] .grid > .card:hover .card-icon {
+  transform: none;
 }
 .grid > .card:hover .card-icon {
   transform: rotate(-8deg) scale(1.1);
@@ -525,10 +550,5 @@ textarea {
 [data-motion='off'] .wrap > *,
 [data-motion='off'] .container > * {
   animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .tv-bg i {
-    animation: none;
-  }
 }
 /* #endregion */

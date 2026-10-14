@@ -13,14 +13,13 @@
   'use strict';
 
   const THEMES = [
+    { id: 'black', label: 'Black', dot: '#000000' },
     { id: 'graphite', label: 'Graphite', dot: '#e8a23c' },
     { id: 'blueprint', label: 'Blueprint', dot: '#4fd1e0' },
-    { id: 'moss', label: 'Moss', dot: '#9bd64a' },
     { id: 'plum', label: 'Plum', dot: '#ef8fb4' },
     { id: 'paper', label: 'Paper', dot: '#f2eee6' },
-    { id: 'black', label: 'Black', dot: '#000000' },
   ];
-  const DEFAULT_THEME = 'graphite';
+  const DEFAULT_THEME = 'black';
   const DEFAULT_LANG = 'en';
 
   const store = {

@@ -31,17 +31,6 @@
   --accent-contrast: #07131f;
   --accent-soft: rgba(79, 209, 224, 0.14);
 }
-[data-theme='moss'] {
-  --bg: #0f1511;
-  --surface: #161e18;
-  --surface-2: #1e2820;
-  --border: #2c3a2f;
-  --text: #e8efe6;
-  --text-muted: #8da08c;
-  --accent: #9bd64a;
-  --accent-contrast: #11160e;
-  --accent-soft: rgba(155, 214, 74, 0.14);
-}
 [data-theme='plum'] {
   --bg: #170f1a;
   --surface: #211726;

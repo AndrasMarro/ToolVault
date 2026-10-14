@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" data-theme="graphite">
+<html lang="de" data-theme="black">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -90,18 +90,6 @@
         --accent: #d6492f;
         --accent-contrast: #fff7f2;
         --accent-soft: rgba(214, 73, 47, 0.1);
-      }
-      [data-theme='moss'] {
-        /* Dunkelgrün + Limette */
-        --bg: #0f1511;
-        --surface: #161e18;
-        --surface-2: #1e2820;
-        --border: #2c3a2f;
-        --text: #e8efe6;
-        --text-muted: #8da08c;
-        --accent: #9bd64a;
-        --accent-contrast: #11160e;
-        --accent-soft: rgba(155, 214, 74, 0.14);
       }
       [data-theme='plum'] {
         /* Aubergine + Warmes Rosa */
@@ -547,21 +535,20 @@
         },
         author: 'A. Marro',
         linkedin: 'https://www.linkedin.com/in/andras-marro-5801491a5/',
-        defaultTheme: 'graphite', // Start-Theme
+        defaultTheme: 'black', // Start-Theme
         defaultLang: 'en', // Start-Sprache: 'de' oder 'en' (gilt bei jedem Refresh)
-        version: '3.3', // ToolVault Hub-Version
+        version: '3.3.1', // ToolVault Hub-Version
       };
 
       /* Reihenfolge + Namen der Themes für die Punkte oben rechts.
          Neues Theme: oben im CSS einen [data-theme="..."]-Block anlegen,
          dann hier { id, label } ergänzen. */
       const THEMES = [
+        { id: 'black', label: 'Black' },
         { id: 'graphite', label: 'Graphite' },
         { id: 'blueprint', label: 'Blueprint' },
-        { id: 'moss', label: 'Moss' },
         { id: 'plum', label: 'Plum' },
         { id: 'paper', label: 'Paper' },
-        { id: 'black', label: 'Black' },
       ];
       // #endregion
 
@@ -874,7 +861,9 @@
       });
       let startTheme = SITE.defaultTheme;
       try {
-        startTheme = localStorage.getItem('hub-theme') || startTheme;
+        const saved = localStorage.getItem('hub-theme');
+        // gespeichertes Theme nur nehmen, wenn es noch existiert (z. B. Moss wurde entfernt)
+        if (THEMES.some((t) => t.id === saved)) startTheme = saved;
       } catch (e) {}
       setTheme(startTheme);
 
@@ -1010,7 +999,11 @@
 
       // --- Tastatur ---
       search.addEventListener('input', filter);
+      // Markierung der aktiven Karte nur zeigen, solange mit Pfeiltasten navigiert wird
+      search.addEventListener('input', () => grid.classList.remove('kbd'));
+      grid.addEventListener('pointermove', () => grid.classList.remove('kbd'));
       search.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') grid.classList.add('kbd');
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           if (visible.length) setActive((active + 1) % visible.length);

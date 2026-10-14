@@ -49,7 +49,7 @@
   try {
     mode = localStorage.getItem(KEY);
   } catch (e) {}
-  if (!MODES.includes(mode)) mode = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'still' : 'on';
+  if (!MODES.includes(mode)) mode = 'on'; // anhalten/ausblenden über den Schalter oben
   root.dataset.motion = mode;
 
   const svg = (inner, cls = '') =>
@@ -108,7 +108,7 @@
     // Pointer-Licht auf Karten und Boxen (nur Maus)
     if (matchMedia('(hover: hover)').matches) {
       document.addEventListener('pointermove', (e) => {
-        const el = e.target.closest && e.target.closest('.card, .box, .panel');
+        const el = e.target.closest && e.target.closest('.grid > .card');
         if (!el) return;
         const r = el.getBoundingClientRect();
         el.style.setProperty('--mx', e.clientX - r.left + 'px');

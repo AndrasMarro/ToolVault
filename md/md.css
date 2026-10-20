@@ -479,8 +479,20 @@
   }
 }
 
+/* Ohne Kopf-/Fusszeile: kein Seitenrand für den Browser, Abstand liefert das Dokument
+   (box-decoration-break wiederholt das Padding auf jeder Seite); @page { margin: 0 } setzt md.js */
+.print-hf {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 /* Drucken / PDF: nur das Dokument */
 @media print {
+  .no-hf .md-body {
+    padding: 16mm 18mm !important;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
   body {
     background: #fff !important;
     color: #111 !important;
@@ -492,6 +504,8 @@
   .toc,
   .read-tools,
   .footer,
+  .tv-bg,
+  .tv-progress,
   .md-body pre .copy {
     display: none !important;
   }

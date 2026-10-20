@@ -656,3 +656,30 @@ textarea {
   animation: none;
 }
 /* #endregion */
+
+/* #region Drucken: keine Effekte im PDF */
+@media print {
+  .tv-bg,
+  .tv-progress,
+  .motion-btn,
+  .hero-icon {
+    display: none !important;
+  }
+  .box,
+  .grid > .card,
+  .pane,
+  .panel-grid > .panel,
+  .container .card,
+  nav.tabs,
+  .search-shell {
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-image: none !important;
+  }
+  .tv-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+/* #endregion */

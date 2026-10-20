@@ -111,6 +111,8 @@ Have fun writing!
       save: '⬇ .md speichern',
       exportHtml: '⬇ HTML',
       print: '🖨 PDF / Drucken',
+      printHeaders: 'Kopf-/Fusszeile',
+      printHeadersHint: 'Browser-Kopf- und Fusszeile (Titel, Adresse, Datum, Seitenzahl) im PDF mitdrucken',
       v_edit: '✎ Schreiben',
       v_split: '◫ Geteilt',
       v_read: '☰ Lesen',
@@ -156,6 +158,8 @@ Have fun writing!
       save: '⬇ Save .md',
       exportHtml: '⬇ HTML',
       print: '🖨 PDF / Print',
+      printHeaders: 'Header/footer',
+      printHeadersHint: 'Include the browser header and footer (title, address, date, page number) in the PDF',
       v_edit: '✎ Write',
       v_split: '◫ Split',
       v_read: '☰ Read',
@@ -415,6 +419,32 @@ Have fun writing!
     load('', null);
     setView('split');
     src.focus();
+  });
+  // Kopf-/Fusszeile druckt der Browser in den Seitenrand (Titel, URL, Datum).
+  // Aus (Standard): Seitenrand 0 → der Browser hat keinen Platz dafür; den Abstand
+  // übernimmt das Dokument selbst (md.css, .no-hf). Der Titel wird zum Dateinamen,
+  // damit „Als PDF speichern“ einen sauberen Namen vorschlägt.
+  const hfBox = $('#printHeaders');
+  hfBox.checked = store.get('tv-md-print-hf') === true;
+  const pageRule = document.head.appendChild(document.createElement('style'));
+  const applyHf = () => {
+    document.documentElement.classList.toggle('no-hf', !hfBox.checked);
+    pageRule.textContent = hfBox.checked ? '' : '@page { margin: 0; }';
+  };
+  hfBox.addEventListener('change', () => {
+    store.set('tv-md-print-hf', hfBox.checked);
+    applyHf();
+  });
+  applyHf();
+  let titleBefore = null;
+  addEventListener('beforeprint', () => {
+    if (hfBox.checked) return;
+    titleBefore = document.title;
+    document.title = baseName();
+  });
+  addEventListener('afterprint', () => {
+    if (titleBefore !== null) document.title = titleBefore;
+    titleBefore = null;
   });
   $('#print').addEventListener('click', () => {
     if (view === 'edit') setView('split');

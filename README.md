@@ -13,6 +13,7 @@ Everything runs locally in the browser – no build step, no backend. Open `inde
 | Color Vision | `vision/` | Name colours in photos or via camera, colour vision test, simulate and compensate colour blindness |
 | JSON Formatter | `json/` | Validate, format, minify, repair and explore JSON as a tree |
 | Password Generator | `password/` | Passwords, passphrases and PINs with entropy and a strength check |
+| Bit Lab | `bits/` | Convert between bases 2–36, + − × ÷ and AND/OR/XOR/NOT/shifts – instantly or step by step with animated explanations |
 | Encode & Hash | `encode/` | Base64, URL, HTML, hex, binary, Unicode · MD5/SHA/HMAC · JWT |
 | Text Toolkit | `text/` | Word counts, case conversion, line operations, find & replace |
 | Regex Tester | `regex/` | Live regex matching with groups, replace preview and presets |

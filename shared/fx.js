@@ -14,7 +14,8 @@
     "vision": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",
     "json": "<path d=\"M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1\"/><path d=\"M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1\"/>",
     "password": "<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\"/><circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>",
-    "encode": "<rect x=\"14\" y=\"14\" width=\"4\" height=\"6\" rx=\"2\"/><rect x=\"6\" y=\"4\" width=\"4\" height=\"6\" rx=\"2\"/><path d=\"M6 20h4\"/><path d=\"M14 10h4\"/><path d=\"M6 14h2v6\"/><path d=\"M14 4h2v6\"/>",
+    "encode": "<line x1=\"4\" x2=\"20\" y1=\"9\" y2=\"9\"/><line x1=\"4\" x2=\"20\" y1=\"15\" y2=\"15\"/><line x1=\"10\" x2=\"8\" y1=\"3\" y2=\"21\"/><line x1=\"16\" x2=\"14\" y1=\"3\" y2=\"21\"/>",
+    "bits": "<rect x=\"14\" y=\"14\" width=\"4\" height=\"6\" rx=\"2\"/><rect x=\"6\" y=\"4\" width=\"4\" height=\"6\" rx=\"2\"/><path d=\"M6 20h4\"/><path d=\"M14 10h4\"/><path d=\"M6 14h2v6\"/><path d=\"M14 4h2v6\"/>",
     "text": "<path d=\"M12 4v16\"/><path d=\"M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2\"/><path d=\"M9 20h6\"/>",
     "regex": "<path d=\"M17 3v10\"/><path d=\"m12.67 5.5 8.66 5\"/><path d=\"m12.67 10.5 8.66-5\"/><path d=\"M9 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2z\"/>",
     "time": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6h4\"/>",
@@ -154,6 +155,32 @@
   }
   // #endregion
 
+  // #region Verwandte Tools: kleine Linkzeile unter der Überschrift
+  const RELATED = {
+    bits: ['encode', 'color', 'unit-converter'],
+    encode: ['bits'],
+    color: ['bits'],
+    'unit-converter': ['bits'],
+  };
+  const TOOL = {
+    bits: { de: 'Bit Lab – Zahlensysteme & Logik', en: 'Bit Lab – number bases & logic', url: '../bits/bits.html' },
+    encode: { de: 'Encode & Hash (Hex, Binär, Base64)', en: 'Encode & Hash (hex, binary, Base64)', url: '../encode/encode.html' },
+    color: { de: 'Farb-Konverter (Hex-Farben)', en: 'Color Converter (hex colours)', url: '../color/color.html' },
+    'unit-converter': { de: 'Einheiten-Rechner (Bit & Byte)', en: 'Unit Converter (bits & bytes)', url: '../unit-converter/unit-converter.html' },
+  };
+  let related = null;
+  function paintRelated() {
+    if (!related) return;
+    const de = root.lang === 'de';
+    related.innerHTML =
+      '<span>' + (de ? 'Verwandt' : 'Related') + '</span>' +
+      related.dataset.keys
+        .split(',')
+        .map((k) => '<a href="' + TOOL[k].url + '">' + svg(ICONS[k] || '') + (de ? TOOL[k].de : TOOL[k].en) + '</a>')
+        .join('');
+  }
+  // #endregion
+
   // #region Einblenden beim Hinscrollen
   function setupReveal() {
     if (mode === 'off' || !('IntersectionObserver' in window)) return;
@@ -216,6 +243,14 @@
       ic.className = 'hero-icon';
       ic.innerHTML = svg(ICONS[key]);
       hero.prepend(ic);
+    }
+    if (hero && RELATED[key] && !embedded) {
+      related = document.createElement('p');
+      related.className = 'related';
+      related.dataset.keys = RELATED[key].join(',');
+      hero.appendChild(related);
+      paintRelated();
+      new MutationObserver(paintRelated).observe(root, { attributes: true, attributeFilter: ['lang'] });
     }
     // Karten nacheinander einblenden
     document.querySelectorAll('.grid > .card').forEach((c, i) => c.style.setProperty('--i', i));

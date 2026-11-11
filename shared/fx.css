@@ -683,3 +683,45 @@ textarea {
   }
 }
 /* #endregion */
+
+/* #region Verwandte Tools (fx.js) */
+.hero .related,
+.related {
+  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 14px 0 0;
+  font: 0.72rem var(--mono);
+  color: var(--text-muted);
+}
+.related a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  transition:
+    border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.related a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.related svg {
+  width: 13px;
+  height: 13px;
+  color: var(--accent);
+}
+@media print {
+  .related {
+    display: none;
+  }
+}
+/* #endregion */

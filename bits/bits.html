@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" data-theme="black">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Bit Lab: convert between binary, octal, decimal and hex, calculate with + − × ÷ and AND / OR / XOR – instantly or step by step with animated explanations."
+    />
+    <title>Bit Lab · ToolVault</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared/tv.css?v=3.5" />
+    <link rel="stylesheet" href="bits.css?v=3.5" />
+    <script src="../shared/tv.js?v=3.5"></script>
+    <link rel="stylesheet" href="../shared/fx.css?v=3.5" />
+    <script src="../shared/fx.js?v=3.5"></script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <a class="wordmark" href="../index.html"
+          ><span class="prompt">~/</span><span class="hub">ToolVault</span
+          ><span class="prompt">/</span><span class="tool">bits</span></a
+        >
+        <div class="topbar-right">
+          <div class="themes" id="themes" role="group" aria-label="Theme"></div>
+          <div class="lang" id="lang" role="group" aria-label="Language">
+            <button data-lang="de">DE</button><span class="divider" aria-hidden="true">·</span
+            ><button data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker"></p>
+        <h1 data-i18n-html="title"></h1>
+        <p data-i18n="lead"></p>
+      </section>
+
+      <div class="row bar">
+        <span class="seg" id="viewSeg" role="tablist">
+          <button role="tab" data-view="quick" data-i18n="v_quick"></button>
+          <button role="tab" data-view="learn" data-i18n="v_learn"></button>
+        </span>
+        <span class="spacer"></span>
+        <span class="seg" id="modeSeg" role="tablist">
+          <button role="tab" data-mode="convert" data-i18n="m_convert"></button>
+          <button role="tab" data-mode="arith" data-i18n="m_arith"></button>
+          <button role="tab" data-mode="logic" data-i18n="m_logic"></button>
+        </span>
+      </div>
+
+      <!-- Eingaben (je nach Modus von bits.js aufgebaut) -->
+      <section class="box" id="inputs"></section>
+
+      <!-- Rechner: Ergebnisse sofort -->
+      <section id="quick"></section>
+
+      <!-- Rechenweg: Schritt für Schritt -->
+      <section class="box learn" id="learn" hidden>
+        <div class="learn-head">
+          <div class="task" id="task"></div>
+          <span class="pill" id="stepNo"></span>
+        </div>
+        <div class="stage" id="stage" aria-live="polite"></div>
+        <div class="explain" id="explain"></div>
+        <div class="player">
+          <button class="btn sm" id="pFirst" data-i18n-title="ctl_first">⏮</button>
+          <button class="btn sm" id="pPrev" data-i18n-title="ctl_prev">◀</button>
+          <button class="btn primary" id="pPlay"></button>
+          <button class="btn sm" id="pNext" data-i18n-title="ctl_next">▶</button>
+          <button class="btn sm" id="pLast" data-i18n-title="ctl_last">⏭</button>
+          <label class="speed"
+            ><span data-i18n="speed"></span><input type="range" id="pSpeed" min="0" max="4" step="1" value="2"
+          /></label>
+        </div>
+        <div class="progress" id="progress"></div>
+        <p class="hint" data-i18n="keysHint"></p>
+      </section>
+
+      <footer class="footer">
+        <a href="../index.html">← ToolVault</a><span>·</span><span>Bit Lab v1.0</span><span>·</span
+        ><span data-i18n="local"></span><span>·</span><span id="tv-year"></span>
+      </footer>
+    </div>
+
+    <script src="bits.js?v=3.5"></script>
+  </body>
+</html>

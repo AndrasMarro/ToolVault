@@ -457,6 +457,29 @@ sub {
   border-bottom-color: var(--accent);
   border-top: 0;
 }
+/* Kommazahlen: Periode überstrichen, Multiplikationsliste */
+.per {
+  text-decoration: overline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--accent);
+}
+.divline.frac {
+  grid-template-columns: minmax(6em, auto) 3.6em minmax(6em, auto) 5.5em;
+}
+.divline.per-line {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.reading.down .readup {
+  transform-origin: top;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+}
+.reading.down .readup::before {
+  top: auto;
+  bottom: -2px;
+  border-bottom: 0;
+  border-top: 6px solid var(--accent);
+}
+
 /* Gruppen (Binär ↔ Hex/Oktal) */
 .groups {
   display: flex;

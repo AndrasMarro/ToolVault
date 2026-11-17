@@ -61,6 +61,23 @@
       intOnly: 'Ganze Zahlen, beliebig groß. Präfixe wie 0b, 0o, 0x werden erkannt.',
       e_digit: (ch, b) => `„${ch}“ ist keine gültige Ziffer zur Basis ${b}.`,
       e_empty: 'Bitte eine Zahl eingeben.',
+      e_frac: 'Kommazahlen gehen nur beim Umrechnen – hier bitte ganze Zahlen.',
+      convHint: 'Ganze Zahlen und Kommazahlen (1.3 oder 1,3), beliebig groß. Präfixe wie 0b, 0o, 0x werden erkannt.',
+      perHint: 'Überstrichene Ziffern sind eine <b>Periode</b> – sie wiederholen sich endlos. „…“ heißt: geht weiter, Periode ist länger als die Anzeige.',
+      exact: 'endet',
+      period: (n) => `Periode ${n}`,
+      fr_split: (i, f) => `<b>Kommazahl:</b> Ganzzahlteil (${i}) und Nachkommateil (${f}) werden getrennt umgerechnet und am Ende wieder zusammengesetzt.`,
+      fr_int: 'Zuerst der Ganzzahlteil – wie bei jeder ganzen Zahl.',
+      fr_toDec: (b) => `<b>Nachkommateil → Dezimal:</b> Nach dem Komma geht der Stellenwert mit negativen Potenzen weiter: ${b}${sup('−1')}, ${b}${sup('−2')}, … Jede Ziffer × ihr Stellenwert, alles addieren.`,
+      fr_term: (k, d, b, w, p, sum) => `Stelle ${k} nach dem Komma: ${d} × ${b}${sup('−' + k)} = ${d} × ${w} = <b>${p}</b>. Zwischensumme: <b>${sum}</b>.`,
+      fr_mul: (b) => `<b>Nachkommateil → Basis ${b}:</b> Immer wieder mit ${b} <b>multiplizieren</b>. Die Zahl vor dem Komma ist die nächste Ziffer, mit dem Rest nach dem Komma geht es weiter – bis der Rest 0 ist oder sich ein Rest wiederholt.`,
+      fr_step: (f, b, p, dig) => `${f} × ${b} = ${p} → Ziffer <b>${dig}</b>, weiter mit dem Rest.`,
+      fr_zero: 'Rest 0 → die Zahl endet hier, exakt.',
+      fr_period: (f) => `Der Rest ${f} kam schon einmal vor → ab hier wiederholt sich alles: Die markierten Ziffern sind eine <b>Periode</b>.`,
+      fr_cut: 'Die Periode ist sehr lang – hier brechen wir ab. Die Anzeige oben zeigt mehr Stellen.',
+      fr_read: 'Die Ziffern <b>von oben nach unten</b> gelesen ergeben den Nachkommateil.',
+      fr_done: 'Ganzzahl- und Nachkommateil zusammengesetzt:',
+      fr_same: (b) => `Quelle und Ziel sind beide Basis ${b} – es gibt nichts umzurechnen.`,
       e_div0: 'Division durch 0 ist nicht definiert.',
       e_shift: 'Verschiebung: 0 bis 256 Stellen.',
       toLearn: 'Rechenweg ansehen →',
@@ -191,6 +208,23 @@
       intOnly: 'Whole numbers of any size. Prefixes like 0b, 0o, 0x are recognised.',
       e_digit: (ch, b) => `"${ch}" is not a valid digit in base ${b}.`,
       e_empty: 'Please enter a number.',
+      e_frac: 'Fractions only work when converting – please use whole numbers here.',
+      convHint: 'Whole numbers and fractions (1.3 or 1,3) of any size. Prefixes like 0b, 0o, 0x are recognised.',
+      perHint: 'Overlined digits are a <b>repeating period</b> – they repeat forever. "…" means it goes on, the period is longer than shown.',
+      exact: 'terminates',
+      period: (n) => `period ${n}`,
+      fr_split: (i, f) => `<b>Fraction:</b> the integer part (${i}) and the fractional part (${f}) are converted separately and joined again at the end.`,
+      fr_int: 'First the integer part – like any whole number.',
+      fr_toDec: (b) => `<b>Fractional part → decimal:</b> after the point the place values continue with negative powers: ${b}${sup('−1')}, ${b}${sup('−2')}, … Multiply every digit by its place value and add everything.`,
+      fr_term: (k, d, b, w, p, sum) => `Place ${k} after the point: ${d} × ${b}${sup('−' + k)} = ${d} × ${w} = <b>${p}</b>. Running total: <b>${sum}</b>.`,
+      fr_mul: (b) => `<b>Fractional part → base ${b}:</b> keep <b>multiplying</b> by ${b}. The part before the point is the next digit, continue with what is left after the point – until it is 0 or a remainder repeats.`,
+      fr_step: (f, b, p, dig) => `${f} × ${b} = ${p} → digit <b>${dig}</b>, continue with the rest.`,
+      fr_zero: 'Rest is 0 → the number terminates here, exactly.',
+      fr_period: (f) => `The rest ${f} appeared before → from here everything repeats: the marked digits are a <b>repeating period</b>.`,
+      fr_cut: 'The period is very long – we stop here. The display above shows more digits.',
+      fr_read: 'Reading the digits <b>from top to bottom</b> gives the fractional part.',
+      fr_done: 'Integer and fractional part joined:',
+      fr_same: (b) => `Source and target are both base ${b} – nothing to convert.`,
       e_div0: 'Division by 0 is undefined.',
       e_shift: 'Shift: 0 to 256 places.',
       toLearn: 'Show the steps →',
@@ -312,6 +346,7 @@
       str = str.slice(2);
     }
     if (!str) return { error: t('e_empty') };
+    if (/[.,]/.test(str)) return { error: t('e_frac') };
     let v = 0n;
     const B = BigInt(base);
     for (const ch of str) {
@@ -321,6 +356,61 @@
     }
     return { value: neg ? -v : v, base };
   }
+  // #region Kommazahlen: exakt als Bruch fn/fd (0 ≤ fn < fd), Periode wird erkannt
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  /** Wie parse, erlaubt aber einen Punkt/ein Komma. Ergebnis: value (Ganzzahlteil), fn/fd, neg */
+  function parseReal(raw, base) {
+    const str = String(raw).trim().replace(/[\s_'’]/g, '');
+    const m = str.match(/^([-−]?)([^.,]*)[.,]([^.,]*)$/);
+    if (!m) return parse(str, base);
+    const ip = parse(m[1] + (m[2] || '0'), base);
+    if (ip.error || ip.empty) return ip;
+    const b = ip.base;
+    let fn = 0n;
+    let fd = 1n;
+    for (const ch of m[3].toUpperCase()) {
+      const d = DIG.indexOf(ch);
+      if (d < 0 || d >= b) return { error: t('e_digit', ch, b) };
+      fn = fn * BigInt(b) + BigInt(d);
+      fd *= BigInt(b);
+    }
+    if (fn === 0n) return { value: ip.value, base: b };
+    const g = gcd(fn, fd);
+    return { value: abs(ip.value), fn: fn / g, fd: fd / g, neg: m[1] !== '', base: b, frac: true };
+  }
+  /** Nachkommaziffern von n/d zur Basis b; per = Index, ab dem sich alles wiederholt (−1: endet) */
+  function fracDigits(n, d, b, max = 40) {
+    const seen = new Map();
+    const B = BigInt(b);
+    let str = '';
+    while (n !== 0n && str.length < max) {
+      if (seen.has(n)) return { s: str, per: seen.get(n), cut: false };
+      seen.set(n, str.length);
+      n *= B;
+      str += DIG[Number(n / d)];
+      n %= d;
+    }
+    return { s: str, per: -1, cut: n !== 0n };
+  }
+  /** HTML mit überstrichener Periode */
+  function realHtml(ip, f, b, neg) {
+    const head = (neg ? '−' : '') + fmt(ip, b);
+    if (!f.s) return esc(head);
+    const per = f.per >= 0 ? `<span class="per">${f.s.slice(f.per)}</span>` : '';
+    return esc(head) + '.' + (f.per >= 0 ? f.s.slice(0, f.per) + per : f.s) + (f.cut ? '…' : '');
+  }
+  const rnum = (html, b) => `<span class="num">${html}<sub>${b}</sub></span>`;
+  /** Bruch als Dezimalzahl mit Periode, z. B. 0.3 oder 0.(3) */
+  const dec = (n, d) => realHtml(n / d, fracDigits(n % d, d, 10, 24), 10, false);
+  /** Klartext zum Kopieren/Eintippen: Periode ausgeschrieben, max. ~32 Nachkommastellen */
+  function realText(ip, n, d, b, neg) {
+    const f = fracDigits(n, d, b, 64);
+    let str = f.s;
+    if (f.per >= 0) while (str.length < 32) str += f.s.slice(f.per);
+    return (neg ? '-' : '') + digits(ip, b) + (str ? '.' + str.slice(0, 32) : '');
+  }
+  // #endregion
+
   /** Gruppiert Ziffern zum Lesen: BIN/HEX in 4er, DEC in 3er (schmales Leerzeichen), OCT in 3er. */
   function fmt(v, b, group = true) {
     let str = digits(v, b);
@@ -515,6 +605,95 @@
       last.text += ' ' + L().neg_note('');
     }
     steps[steps.length - 1].result = v;
+    return steps;
+  }
+  function genConvertReal(r) {
+    const { v: ip, frac, from, to } = r;
+    const { n, d, neg } = frac;
+    const src = rnum(realHtml(ip, fracDigits(n, d, from), from, neg), from);
+    const dst = () => rnum(realHtml(ip, fracDigits(n, d, to), to, neg), to);
+    if (from === to) return [{ html: board(`<div class="sum big">${src}</div>`), text: L().fr_same(from), result: { ip, n, d } }];
+    const steps = [];
+    steps.push({
+      html: board(`<div class="sum big">${src} → ${num('?', to)}</div>`),
+      text: L().fr_split(nb(ip, from), rnum('0.' + fracDigits(n, d, from).s, from)),
+    });
+    // 1) Ganzzahlteil wie gehabt
+    const intSteps = genConvert(ip, from, to);
+    intSteps[0].text = L().fr_int + ' ' + intSteps[0].text;
+    steps.push(...intSteps);
+    // 2) Nachkommateil der Quelle → Dezimalwert (Stellenwerte mit negativen Potenzen)
+    if (from !== 10) {
+      const fs = fracDigits(n, d, from).s;
+      const head = (active) =>
+        `<div class="drow posrow"><span class="dl">0.</span>${fs
+          .split('')
+          .map((ch, i) => `<span class="d ${i === active ? 'hl' : i < active ? 'done' : ''}">${ch}<i class="pos">${from}${sup('−' + (i + 1))}</i></span>`)
+          .join('')}</div>`;
+      steps.push({ html: board(head(-1)), text: L().fr_toDec(from) });
+      let sn = 0n;
+      let sd = 1n;
+      const terms = [];
+      for (let k = 1; k <= fs.length; k++) {
+        const ch = fs[k - 1];
+        const dg = BigInt(dval(ch));
+        const w = BigInt(from) ** BigInt(k);
+        sn = sn * BigInt(from) + dg; // Summe = sn / from^k
+        sd = w;
+        terms.push(
+          `<div class="term ${k === fs.length ? '' : ''} fresh-last ${dg === 0n ? 'zero' : ''}"><span>${ch} × ${from}${sup('−' + k)}</span><span>= ${dg} × ${dec(1n, w)}</span><span>= <b>${dec(dg, w)}</b></span></div>`,
+        );
+        const list = terms.map((x, i) => (i === terms.length - 1 ? x.replace('fresh-last', 'fresh') : x)).join('');
+        steps.push({
+          html: board(head(k - 1) + `<div class="terms">${list}</div><div class="sum fresh">Σ = <b>${dec(sn, sd)}</b></div>`),
+          text: L().fr_term(k, `${ch}${dv(ch)}`, from, dec(1n, w), dec(dg, w), dec(sn, sd)),
+        });
+      }
+    }
+    // 3) Dezimalwert → Zielbasis durch wiederholtes Multiplizieren
+    if (to !== 10) {
+      steps.push({ html: board(`<div class="divlist"></div>`), text: L().fr_mul(to) });
+      const lines = [];
+      const seen = new Map();
+      let cn = n;
+      let endText = L().fr_zero;
+      for (let i = 0; ; i++) {
+        if (cn === 0n) break;
+        if (seen.has(cn)) {
+          endText = L().fr_period(dec(cn, d));
+          lines.forEach((l, j) => (l.per = j >= seen.get(cn)));
+          break;
+        }
+        if (i >= 16) {
+          endText = L().fr_cut;
+          break;
+        }
+        seen.set(cn, i);
+        const pn = cn * BigInt(to);
+        const dig = Number(pn / d);
+        lines.push({ f: dec(cn, d), p: dec(pn, d), dig: DIG[dig], val: dig });
+        const list = lines
+          .map(
+            (l, j) =>
+              `<div class="divline frac ${j === lines.length - 1 ? 'fresh' : ''}"><span class="dn">${l.f}</span><span>× ${to} =</span><span class="dq">${l.p}</span><span class="dr">→ <b>${l.dig}</b>${l.val > 9 ? ` (${l.val})` : ''}</span></div>`,
+          )
+          .join('');
+        steps.push({ html: board(`<div class="divlist">${list}</div>`), text: L().fr_step(lines[i].f, to, lines[i].p, lines[i].dig) });
+        cn = pn % d;
+      }
+      const list = lines
+        .map(
+          (l, j) =>
+            `<div class="divline frac ${l.per ? 'per-line' : ''}"><span class="dn">${l.f}</span><span>× ${to} =</span><span class="dq">${l.p}</span><span class="dr read" style="--i:${j}">→ <b>${l.dig}</b></span></div>`,
+        )
+        .join('');
+      steps.push({ html: board(`<div class="divlist reading down">${list}<span class="readup" aria-hidden="true"></span></div>`), text: endText + ' ' + L().fr_read });
+    }
+    steps.push({
+      html: board(`<div class="sum big fresh">${src} = ${dst()}</div>`),
+      text: `${L().fr_done} <b>${realHtml(ip, fracDigits(n, d, to), to, neg)}</b>`,
+      result: { ip, n, d },
+    });
     return steps;
   }
   // #endregion
@@ -851,7 +1030,7 @@
       const c = S.conv;
       el.innerHTML = `<div class="inrow"><label class="field grow"><span>${t('number')}</span><input type="text" id="cIn" spellcheck="false" autocomplete="off" value="${esc(c.input)}"></label></div>
         <div class="inrow">${baseControl(c, 'from', t('from'))}<button class="btn sm swap" id="swap" type="button" title="⇄">⇄</button>${baseControl(c, 'to', t('to'))}</div>
-        <p class="hint">${t('intOnly')}</p><div class="msg bad" id="err"></div>`;
+        <p class="hint">${t('convHint')}</p><div class="msg bad" id="err"></div>`;
     } else if (S.mode === 'arith') {
       const c = S.arith;
       el.innerHTML = `<div class="inrow ops"><label class="field grow"><span>A</span><input type="text" id="aA" spellcheck="false" autocomplete="off" value="${esc(c.a)}"></label>
@@ -876,10 +1055,10 @@
   function evaluate() {
     const err = (m) => ({ error: m });
     if (S.mode === 'convert') {
-      const p = parse(S.conv.input, S.conv.from);
+      const p = parseReal(S.conv.input, S.conv.from);
       if (p.empty) return err(t('e_empty'));
       if (p.error) return err(p.error);
-      return { kind: 'convert', v: p.value, from: p.base, to: S.conv.to };
+      return { kind: 'convert', v: p.value, from: p.base, to: S.conv.to, frac: p.frac ? { n: p.fn, d: p.fd, neg: p.neg } : null };
     }
     if (S.mode === 'arith') {
       const c = S.arith;
@@ -948,7 +1127,18 @@
       return;
     }
     const learnBtn = `<button class="btn" id="toLearn" type="button">${t('toLearn')}</button>`;
-    if (r.kind === 'convert') {
+    if (r.kind === 'convert' && r.frac) {
+      const { n, d, neg } = r.frac;
+      const bases = COMMON.includes(r.to) ? COMMON : COMMON.concat([r.to]);
+      const rows = bases
+        .map((b) => {
+          const f = fracDigits(n, d, b);
+          const info = f.per >= 0 ? t('period', f.s.length - f.per) : f.cut ? '…' : t('exact');
+          return `<div class="out-row ${b === r.to ? 'on' : ''}"><span class="ob">${BNAME[b] || 'B' + b}<sub>${b}</sub></span><code class="ov">${realHtml(r.v, f, b, neg)}</code><span class="oc">${info}</span><button class="btn sm" data-copyv="${esc(realText(r.v, n, d, b, neg))}">${t('copy')}</button></div>`;
+        })
+        .join('');
+      q.innerHTML = `<div class="box"><h2 class="box-title"><span>${t('result')}</span>${learnBtn}</h2><div class="outs">${rows}</div><p class="hint">${t('perHint')}</p></div>`;
+    } else if (r.kind === 'convert') {
       q.innerHTML = `<div class="box"><h2 class="box-title"><span>${t('result')}</span>${learnBtn}</h2>${outRows(r.v, r.to)}</div>
         <div class="box"><h2 class="box-title"><span>Bits</span></h2>${bitGrid(r.v, true)}</div>`;
     } else if (r.kind === 'arith') {
@@ -982,11 +1172,12 @@
   let lastKey = '';
   let lastLang = '';
   function buildSteps(r) {
-    if (r.kind === 'convert') return genConvert(r.v, r.from, r.to);
+    if (r.kind === 'convert') return r.frac ? genConvertReal(r) : genConvert(r.v, r.from, r.to);
     if (r.kind === 'arith') return genArith(r.a, r.op, r.b, r.base);
     return genLogic(r.a, r.b, r.op, r.w, r.shift);
   }
   function taskLine(r) {
+    if (r.kind === 'convert' && r.frac) return `${rnum(realHtml(r.v, fracDigits(r.frac.n, r.frac.d, r.from), r.from, r.frac.neg), r.from)} → ${num('?', r.to)}`;
     if (r.kind === 'convert') return `${nb(r.v, r.from)} → ${num('?', r.to)}`;
     if (r.kind === 'arith') return `${nb(r.a, r.base)} ${ASYM[r.op]} ${nb(r.b, r.base)} = ?`;
     if (r.op === 'NOT') return `NOT ${nb(BigInt.asUintN(r.w, r.a), 2)}`;
@@ -1118,8 +1309,9 @@
       const nbv = +bb.dataset.b;
       // Eingabe beim Basiswechsel mitnehmen, wenn sie gültig ist (Umrechnen: Zahl bleibt gleich)
       if (S.mode === 'convert' && key === 'from') {
-        const p = parse(c.input, c.from);
-        if (p.value !== undefined) c.input = fmt(p.value, nbv, false).replace('−', '-');
+        const p = parseReal(c.input, c.from);
+        if (p.frac) c.input = realText(p.value, p.fn, p.fd, nbv, p.neg);
+        else if (p.value !== undefined) c.input = fmt(p.value, nbv, false).replace('−', '-');
       } else if (key === 'base') {
         const fields = S.mode === 'arith' ? ['a', 'b'] : ['a', 'b'];
         fields.forEach((f) => {
@@ -1142,9 +1334,10 @@
     }
     if (e.target.closest('#swap')) {
       const c = S.conv;
-      const p = parse(c.input, c.from);
+      const p = parseReal(c.input, c.from);
       [c.from, c.to] = [c.to, c.from];
-      if (p.value !== undefined) c.input = fmt(p.value, c.from, false).replace('−', '-');
+      if (p.frac) c.input = realText(p.value, p.fn, p.fd, c.from, p.neg);
+      else if (p.value !== undefined) c.input = fmt(p.value, c.from, false).replace('−', '-');
       return full();
     }
   });
@@ -1207,6 +1400,6 @@
   full();
 
   // Für Tests: reine Funktionen von außen prüfbar
-  window.BitLab = { parse, fmt, digits, genConvert, genArith, genLogic, calcLogic, autoWidth, state: S, render: full };
+  window.BitLab = { parse, parseReal, fracDigits, realText, genConvertReal, fmt, digits, genConvert, genArith, genLogic, calcLogic, autoWidth, state: S, render: full };
   // #endregion
 })();

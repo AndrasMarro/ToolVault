@@ -40,6 +40,38 @@
       m_convert: 'Umrechnen',
       m_arith: 'Rechnen',
       m_logic: 'Logik',
+      m_tc: 'Zweierkomplement',
+      tc_enc: 'Dezimal → Bits',
+      tc_dec: 'Bits → Dezimal',
+      tc_inDec: 'Dezimalzahl (auch negativ)',
+      tc_inBits: 'Bitmuster (binär, oder 0x… für Hex)',
+      tc_range: (w, lo, hi) => `${w} Bit fassen ${lo} bis ${hi}.`,
+      e_range: (w, lo, hi) => `Passt nicht in ${w} Bit – erlaubt sind ${lo} bis ${hi}.`,
+      e_long: (w) => `Das Bitmuster ist länger als ${w} Bit.`,
+      tc_signed: 'Mit Vorzeichen (Zweierkomplement)',
+      tc_unsigned: 'Ohne Vorzeichen gelesen',
+      tc_bits: 'Bitmuster',
+      tc_hex: 'Hex',
+      tc_sign: 'Vorzeichenbit',
+      tc_way: 'So entsteht es',
+      tc_abs: 'Betrag binär',
+      tc_inv: 'Alle Bits umdrehen',
+      tc_plus: '+ 1',
+      tc_intro: (w, lo, hi) =>
+        `<b>Zweierkomplement</b> ist die übliche Art, negative Zahlen in Bits zu speichern. Das vorderste Bit zählt <b>negativ</b> (−2${sup(w - 1)}), alle anderen ganz normal. Mit ${w} Bit geht das von ${lo} bis ${hi}. Plus, Minus und Überlauf funktionieren dann ohne Sonderregeln.`,
+      tc_pos: (w) => `Die Zahl ist nicht negativ → einfach binär mit ${w} Bit schreiben. Das vorderste Bit ist 0 = positiv.`,
+      tc_absStep: (a, w) => `<b>Schritt 1:</b> Den Betrag ${a} binär mit ${w} Bit schreiben.`,
+      tc_invStep: '<b>Schritt 2:</b> Alle Bits umdrehen (aus 0 wird 1, aus 1 wird 0). Das nennt man Einerkomplement.',
+      tc_addIntro: '<b>Schritt 3:</b> 1 addieren. Von rechts: Jede 1 wird zu 0 und gibt den Übertrag weiter – die erste 0 wird zur 1, dann ist Schluss.',
+      tc_addOne: (k) => `Bit ${k} ist 1 → wird 0, Übertrag geht weiter nach links.`,
+      tc_addStop: (k) => `Bit ${k} ist 0 → wird 1. Kein Übertrag mehr – fertig.`,
+      tc_check: (sum, v) => `<b>Probe:</b> Vorderstes Bit negativ gewichtet, Rest normal: ${sum} = <b>${v}</b>.`,
+      tc_decIntro: (w) => `<b>Bitmuster lesen:</b> Jedes Bit hat seinen Stellenwert – nur das vorderste (Bit ${w - 1}) zählt <b>negativ</b>: −2${sup(w - 1)}.`,
+      tc_term: (k, w, val, sum) => `Bit ${k} ist 1 → ${w}${val}. Zwischensumme: <b>${sum}</b>.`,
+      tc_msb0: 'Das vorderste Bit ist 0 → die Zahl ist positiv und wird ganz normal gelesen.',
+      tc_msb1: 'Das vorderste Bit ist 1 → die Zahl ist negativ.',
+      tc_alt: (m, v) => `<b>Gegenprobe:</b> Umdrehen und +1 ergibt den Betrag ${m} → die Zahl ist <b>${v}</b>.`,
+      tc_done: (v) => `Ergebnis: <b>${v}</b>.`,
       number: 'Zahl',
       from: 'Basis der Eingabe',
       to: 'Zielbasis',
@@ -187,6 +219,38 @@
       m_convert: 'Convert',
       m_arith: 'Arithmetic',
       m_logic: 'Logic',
+      m_tc: "Two's complement",
+      tc_enc: 'Decimal → bits',
+      tc_dec: 'Bits → decimal',
+      tc_inDec: 'Decimal number (negative too)',
+      tc_inBits: 'Bit pattern (binary, or 0x… for hex)',
+      tc_range: (w, lo, hi) => `${w} bits hold ${lo} to ${hi}.`,
+      e_range: (w, lo, hi) => `Does not fit in ${w} bits – allowed is ${lo} to ${hi}.`,
+      e_long: (w) => `The bit pattern is longer than ${w} bits.`,
+      tc_signed: "Signed (two's complement)",
+      tc_unsigned: 'Read as unsigned',
+      tc_bits: 'Bit pattern',
+      tc_hex: 'Hex',
+      tc_sign: 'Sign bit',
+      tc_way: 'How it is built',
+      tc_abs: 'Absolute value in binary',
+      tc_inv: 'Flip all bits',
+      tc_plus: '+ 1',
+      tc_intro: (w, lo, hi) =>
+        `<b>Two's complement</b> is the usual way to store negative numbers in bits. The leading bit counts <b>negative</b> (−2${sup(w - 1)}), all others as usual. With ${w} bits that covers ${lo} to ${hi}. Addition, subtraction and overflow then work without special rules.`,
+      tc_pos: (w) => `The number is not negative → simply write it in binary with ${w} bits. The leading bit is 0 = positive.`,
+      tc_absStep: (a, w) => `<b>Step 1:</b> write the absolute value ${a} in binary with ${w} bits.`,
+      tc_invStep: "<b>Step 2:</b> flip all bits (0 becomes 1, 1 becomes 0). This is called the one's complement.",
+      tc_addIntro: '<b>Step 3:</b> add 1. From the right: every 1 becomes 0 and passes the carry on – the first 0 becomes 1, and that is it.',
+      tc_addOne: (k) => `Bit ${k} is 1 → becomes 0, the carry moves on to the left.`,
+      tc_addStop: (k) => `Bit ${k} is 0 → becomes 1. No more carry – done.`,
+      tc_check: (sum, v) => `<b>Check:</b> leading bit weighted negative, the rest as usual: ${sum} = <b>${v}</b>.`,
+      tc_decIntro: (w) => `<b>Reading a bit pattern:</b> every bit has its place value – only the leading one (bit ${w - 1}) counts <b>negative</b>: −2${sup(w - 1)}.`,
+      tc_term: (k, w, val, sum) => `Bit ${k} is 1 → ${w}${val}. Running total: <b>${sum}</b>.`,
+      tc_msb0: 'The leading bit is 0 → the number is positive and is read as usual.',
+      tc_msb1: 'The leading bit is 1 → the number is negative.',
+      tc_alt: (m, v) => `<b>Cross-check:</b> flipping and adding 1 gives the absolute value ${m} → the number is <b>${v}</b>.`,
+      tc_done: (v) => `Result: <b>${v}</b>.`,
       number: 'Number',
       from: 'Input base',
       to: 'Target base',
@@ -976,6 +1040,91 @@
   }
   // #endregion
 
+  // #region Rechenweg: Zweierkomplement
+  const tcRange = (w) => [-(1n << BigInt(w - 1)), (1n << BigInt(w - 1)) - 1n];
+  const bitsOf = (u, w) => u.toString(2).padStart(w, '0');
+  const group4 = (b) => b.replace(/\B(?=(.{4})+$)/g, ' ');
+  function genTwos(r) {
+    const { w, v, u } = r;
+    const [lo, hi] = tcRange(w);
+    const nib = (i) => ((w - i) % 4 === 0 && i ? 'nib' : '');
+    const row = (bits, label, cls = () => '', rowCls = '') => drow(strCells(bits, (i) => `${cls(i)} ${nib(i)}`), w, label, 'bits ' + rowCls);
+    const steps = [];
+    const dv10 = (x) => fmt(x, 10);
+    if (r.dir === 'enc') {
+      steps.push({ html: board(`<div class="sum big">${nb(v, 10)} → ${w} Bit</div>`), text: L().tc_intro(w, dv10(lo), dv10(hi)) });
+      if (v >= 0n) {
+        steps.push({ html: board(row(bitsOf(u, w), '', (i) => (i === 0 ? 'fresh hl' : 'fresh'))), text: L().tc_pos(w), result: u });
+      } else {
+        const a = -v;
+        const absBits = bitsOf(a, w);
+        steps.push({ html: board(row(absBits, '|x|', () => 'fresh')), text: L().tc_absStep(nb(a, 10), w) });
+        const inv = absBits.replace(/./g, (c) => (c === '1' ? '0' : '1'));
+        steps.push({ html: board(row(absBits, '|x|', () => 'dim') + row(inv, '~', () => 'fresh flip')), text: L().tc_invStep });
+        steps.push({ html: board(row(inv, '~') + drow([{ t: '1', c: 'fresh' }], w, '+1', 'bits') + rule(w)), text: L().tc_addIntro });
+        const cur = inv.split('');
+        for (let k = 0; k < w; k++) {
+          const i = w - 1 - k;
+          const was = cur[i];
+          cur[i] = was === '1' ? '0' : '1';
+          const res = cur.join('');
+          // Übertrag steht über der Stelle, die ihn gerade bekommt (ab Bit 1)
+          const carry = Array.from({ length: w }, (_, j) => ({ t: j === i && k > 0 ? '1' : '', c: 'carry fresh' }));
+          steps.push({
+            html: board(drow(carry, w, '', 'carries') + row(inv, '~', (j) => (j === i ? 'hl' : '')) + drow([{ t: '1' }], w, '+1', 'bits') + rule(w) + row(res, '=', (j) => (j === i ? 'fresh res' : j > i ? 'res' : 'dim'))),
+            text: was === '1' ? L().tc_addOne(k) : L().tc_addStop(k),
+          });
+          if (was === '0') break;
+        }
+      }
+    } else {
+      steps.push({ html: board(row(bitsOf(u, w), '')), text: L().tc_decIntro(w) });
+    }
+    // Stellenwerte: vorderstes Bit negativ
+    const bits = bitsOf(u, w);
+    const head = (active, done) =>
+      `<div class="drow posrow tc"><span class="dl"></span>${bits
+        .split('')
+        .map((ch, i) => {
+          const k = w - 1 - i;
+          return `<span class="d ${k === active ? 'hl' : k > done ? 'done' : ''} ${nib(i)} ${ch === '1' ? '' : 'dim'}">${ch}<i class="pos">${i === 0 ? '−' : ''}2${sup(k)}</i></span>`;
+        })
+        .join('')}</div>`;
+    const set = [];
+    for (let k = w - 1; k >= 0; k--) if (bits[w - 1 - k] === '1') set.push(k);
+    const weight = (k) => (k === w - 1 ? -(1n << BigInt(k)) : 1n << BigInt(k));
+    if (r.dir === 'dec') {
+      steps.push({ html: board(head(w - 1, w)), text: bits[0] === '1' ? L().tc_msb1 : L().tc_msb0 });
+      let sum = 0n;
+      const terms = [];
+      for (const k of set) {
+        sum += weight(k);
+        terms.push(`<div class="term fresh-${k}"><span>Bit ${k}</span><span>${k === w - 1 ? '−' : ''}2${sup(k)}</span><span>= <b>${dv10(weight(k))}</b></span></div>`);
+        steps.push({
+          html: board(head(k, k) + `<div class="terms">${terms.map((x, j) => x.replace(/fresh-\d+/, j === terms.length - 1 ? 'fresh' : '')).join('')}</div><div class="sum fresh">Σ = <b>${dv10(sum)}</b></div>`),
+          text: L().tc_term(k, `${k === w - 1 ? '−' : ''}2${sup(k)}`, ` = ${dv10(weight(k))}`, dv10(sum)),
+        });
+      }
+      if (v < 0n) {
+        const inv = bits.replace(/./g, (c) => (c === '1' ? '0' : '1'));
+        steps.push({
+          html: board(row(bits, '') + row(inv, '~', () => 'fresh flip') + drow([{ t: '1' }], w, '+1', 'bits') + rule(w) + row(bitsOf(-v, w), '|x|', () => 'fresh res')),
+          text: L().tc_alt(nb(-v, 10), dv10(v)),
+        });
+      }
+      steps.push({ html: board(`<div class="sum big fresh">${num(bits, 2)} = ${nb(v, 10)}</div>`), text: L().tc_done(dv10(v)), result: v });
+    } else {
+      const expr = set.map((k) => dv10(weight(k))).join(' + ').replace(/\+ −/g, '− ') || '0';
+      steps.push({
+        html: board(head(-1, -1) + `<div class="sum big fresh">${nb(v, 10)} = ${num(bits, 2)} = ${num('0x' + u.toString(16).toUpperCase().padStart(Math.ceil(w / 4), '0'), 16)}</div>`),
+        text: L().tc_check(expr, dv10(v)),
+        result: u,
+      });
+    }
+    return steps;
+  }
+  // #endregion
+
   // #region Rechner (sofort)
   function calcLogic(a, b, op, w, shift) {
     const A = BigInt.asUintN(w, a);
@@ -1007,6 +1156,7 @@
     conv: { input: '156', from: 10, to: 2 },
     arith: { a: '1011', b: '110', base: 2, op: '+' },
     logic: { a: '1100 1010', b: '1010 0110', base: 2, op: 'AND', width: 'auto', shift: 2 },
+    tc: { dir: 'enc', input: '-42', bits: '1101 0110', width: 8 },
   };
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
@@ -1037,6 +1187,15 @@
         <span class="seg opseg" id="opSeg">${['+', '-', '*', '/'].map((o) => `<button type="button" data-op="${o}" aria-selected="${c.op === o}">${ASYM[o]}</button>`).join('')}</span>
         <label class="field grow"><span>B</span><input type="text" id="aB" spellcheck="false" autocomplete="off" value="${esc(c.b)}"></label></div>
         <div class="inrow">${baseControl(c, 'base', t('calcBase'))}</div><p class="hint">${t('intOnly')}</p><div class="msg bad" id="err"></div>`;
+    } else if (S.mode === 'tc') {
+      const c = S.tc;
+      const enc = c.dir === 'enc';
+      const [lo, hi] = tcRange(c.width);
+      el.innerHTML = `<div class="inrow"><span class="seg small" id="dirSeg"><button type="button" data-dir="enc" aria-selected="${enc}">${t('tc_enc')}</button><button type="button" data-dir="dec" aria-selected="${!enc}">${t('tc_dec')}</button></span></div>
+        <div class="inrow"><label class="field grow"><span>${enc ? t('tc_inDec') : t('tc_inBits')}</span><input type="text" id="${enc ? 'tIn' : 'tBits'}" spellcheck="false" autocomplete="off" value="${esc(enc ? c.input : c.bits)}"></label>
+        <div class="field-base"><span class="lbl">${t('width')}</span><span class="seg small" id="twSeg">${[4, 8, 16, 32, 64]
+          .map((w) => `<button type="button" data-tw="${w}" aria-selected="${c.width === w}">${w}</button>`)
+          .join('')}</span></div></div><p class="hint">${t('tc_range', c.width, fmt(lo, 10), fmt(hi, 10))}</p><div class="msg bad" id="err"></div>`;
     } else {
       const c = S.logic;
       const unary = c.op === 'NOT';
@@ -1069,6 +1228,24 @@
       if (c.op === '/' && b.value === 0n) return err(t('e_div0'));
       const r = { '+': a.value + b.value, '-': a.value - b.value, '*': a.value * b.value, '/': b.value ? a.value / b.value : 0n }[c.op];
       return { kind: 'arith', a: a.value, b: b.value, op: c.op, base: c.base, r, rem: c.op === '/' ? a.value % b.value : null };
+    }
+    if (S.mode === 'tc') {
+      const c = S.tc;
+      const w = c.width;
+      const [lo, hi] = tcRange(w);
+      if (c.dir === 'enc') {
+        const p = parse(c.input, 10);
+        if (p.empty) return err(t('e_empty'));
+        if (p.error) return err(p.error);
+        if (p.value < lo || p.value > hi) return err(t('e_range', w, fmt(lo, 10), fmt(hi, 10)));
+        return { kind: 'tc', dir: 'enc', w, v: p.value, u: BigInt.asUintN(w, p.value) };
+      }
+      const p = parse(c.bits, 2);
+      if (p.empty) return err(t('e_empty'));
+      if (p.error) return err(p.error);
+      if (p.value < 0n) return err(t('e_digit', '-', 2));
+      if (bitLen(p.value) > w) return err(t('e_long', w));
+      return { kind: 'tc', dir: 'dec', w, u: p.value, v: BigInt.asIntN(w, p.value) };
     }
     const c = S.logic;
     const a = parse(c.a, c.base);
@@ -1146,6 +1323,28 @@
       const dec = r.base === 10 ? '' : `<div class="expr small">${nb(r.a, 10)} ${ASYM[r.op]} ${nb(r.b, 10)} = ${nb(r.r, 10)}${r.rem !== null ? ` <span class="muted">${t('remainder')}</span> ${nb(r.rem, 10)}` : ''}</div>`;
       q.innerHTML = `<div class="box"><h2 class="box-title"><span>${r.op === '/' ? t('quotient') : t('result')}</span>${learnBtn}</h2><div class="expr">${expr}</div>${dec}${outRows(r.r, r.base)}</div>
         ${r.rem !== null ? `<div class="box"><h2 class="box-title"><span>${t('remainder')}</span></h2>${outRows(r.rem, r.base)}</div>` : ''}`;
+    } else if (r.kind === 'tc') {
+      const { w, v, u } = r;
+      const bits = bitsOf(u, w);
+      const hex = '0x' + u.toString(16).toUpperCase().padStart(Math.ceil(w / 4), '0');
+      const cells = bits
+        .split('')
+        .map((bit, i) => `<span class="bit ${bit === '1' ? 'one' : ''} ${i === 0 ? 'sign' : ''} ${(w - i) % 8 === 0 && i ? 'byte' : ''}" title="${i === 0 ? '−' : ''}2^${w - 1 - i}"><span>${bit}</span><i>${w - 1 - i}</i></span>`)
+        .join('');
+      const orow = (label, val, copy) =>
+        `<div class="out-row"><span class="ob">${label}</span><code class="ov">${esc(val)}</code><span class="oc"></span><button class="btn sm" data-copyv="${esc(copy)}">${t('copy')}</button></div>`;
+      let way = '';
+      if (v < 0n) {
+        const absB = bitsOf(-v, w);
+        const inv = absB.replace(/./g, (c) => (c === '1' ? '0' : '1'));
+        const lr = (lab, b) => `<div class="lrow"><span class="ll">${lab}</span><span class="lbits">${b.split('').map((x, i) => `<span class="lb ${x === '1' ? 'one' : ''} ${(w - i) % 4 === 0 && i ? 'gap' : ''}">${x}</span>`).join('')}</span><span></span></div>`;
+        way = `<div class="box"><h2 class="box-title"><span>${t('tc_way')}</span></h2><div class="lrows tc-way">${lr('|x|', absB)}${lr('~', inv)}${lr('+1', bits)}</div>
+          <p class="hint">${t('tc_abs')} (${fmt(-v, 10)}) → ${t('tc_inv')} → ${t('tc_plus')}</p></div>`;
+      }
+      q.innerHTML = `<div class="box"><h2 class="box-title"><span>${t('result')} · ${w} Bit</span>${learnBtn}</h2>
+        <div class="bitgrid tc" style="--w:${Math.min(w, 32)}">${cells}</div>
+        <p class="hint">${t('tc_sign')}: <b>${bits[0]}</b> → ${bits[0] === '1' ? '−' : '+'}</p>
+        <div class="outs tc">${orow(t('tc_signed'), fmt(v, 10), (v < 0n ? '-' : '') + digits(v, 10))}${orow(t('tc_bits'), group4(bits), bits)}${orow(t('tc_hex'), hex, hex)}${orow(t('tc_unsigned'), fmt(u, 10), u.toString())}</div></div>${way}`;
     } else {
       const w = r.w;
       const row = (label, v, cls = '') => {
@@ -1174,12 +1373,14 @@
   function buildSteps(r) {
     if (r.kind === 'convert') return r.frac ? genConvertReal(r) : genConvert(r.v, r.from, r.to);
     if (r.kind === 'arith') return genArith(r.a, r.op, r.b, r.base);
+    if (r.kind === 'tc') return genTwos(r);
     return genLogic(r.a, r.b, r.op, r.w, r.shift);
   }
   function taskLine(r) {
     if (r.kind === 'convert' && r.frac) return `${rnum(realHtml(r.v, fracDigits(r.frac.n, r.frac.d, r.from), r.from, r.frac.neg), r.from)} → ${num('?', r.to)}`;
     if (r.kind === 'convert') return `${nb(r.v, r.from)} → ${num('?', r.to)}`;
     if (r.kind === 'arith') return `${nb(r.a, r.base)} ${ASYM[r.op]} ${nb(r.b, r.base)} = ?`;
+    if (r.kind === 'tc') return r.dir === 'enc' ? `${nb(r.v, 10)} → ${r.w} Bit` : `${num(bitsOf(r.u, r.w), 2)} → ${num('?', 10)}`;
     if (r.op === 'NOT') return `NOT ${nb(BigInt.asUintN(r.w, r.a), 2)}`;
     if (r.op === 'SHL' || r.op === 'SHR') return `${nb(BigInt.asUintN(r.w, r.a), 2)} ${LSYM[r.op]} ${r.shift}`;
     return `${nb(BigInt.asUintN(r.w, r.a), 2)} ${r.op} ${nb(BigInt.asUintN(r.w, r.b), 2)}`;
@@ -1283,10 +1484,10 @@
     stop();
     full();
   });
-  const cur = () => (S.mode === 'convert' ? S.conv : S.mode === 'arith' ? S.arith : S.logic);
+  const cur = () => ({ convert: S.conv, arith: S.arith, logic: S.logic, tc: S.tc })[S.mode];
   $('#inputs').addEventListener('input', (e) => {
     const id = e.target.id;
-    const map = { cIn: ['conv', 'input'], aA: ['arith', 'a'], aB: ['arith', 'b'], lA: ['logic', 'a'], lB: ['logic', 'b'], lS: ['logic', 'shift'] };
+    const map = { cIn: ['conv', 'input'], aA: ['arith', 'a'], aB: ['arith', 'b'], lA: ['logic', 'a'], lB: ['logic', 'b'], lS: ['logic', 'shift'], tIn: ['tc', 'input'], tBits: ['tc', 'bits'] };
     if (map[id]) {
       S[map[id][0]][map[id][1]] = e.target.value;
       return later();
@@ -1325,6 +1526,22 @@
     const op = e.target.closest('[data-op]');
     if (op) {
       cur().op = op.dataset.op;
+      return full();
+    }
+    const dir = e.target.closest('[data-dir]');
+    if (dir) {
+      // Richtung wechseln und die aktuelle Zahl mitnehmen
+      const r = evaluate();
+      S.tc.dir = dir.dataset.dir;
+      if (r.kind === 'tc') {
+        S.tc.input = String(r.v);
+        S.tc.bits = group4(bitsOf(r.u, r.w));
+      }
+      return full();
+    }
+    const tw = e.target.closest('[data-tw]');
+    if (tw) {
+      S.tc.width = +tw.dataset.tw;
       return full();
     }
     const w = e.target.closest('[data-w]');
@@ -1400,6 +1617,6 @@
   full();
 
   // Für Tests: reine Funktionen von außen prüfbar
-  window.BitLab = { parse, parseReal, fracDigits, realText, genConvertReal, fmt, digits, genConvert, genArith, genLogic, calcLogic, autoWidth, state: S, render: full };
+  window.BitLab = { genTwos, parse, parseReal, fracDigits, realText, genConvertReal, fmt, digits, genConvert, genArith, genLogic, calcLogic, autoWidth, state: S, render: full };
   // #endregion
 })();

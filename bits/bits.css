@@ -743,3 +743,45 @@ sub {
     }
   }
 }
+
+/* #region Zweierkomplement */
+.bitgrid {
+  max-width: calc(var(--w) * 46px);
+}
+.outs.tc .out-row {
+  grid-template-columns: minmax(9em, 14em) minmax(0, 1fr) auto;
+}
+.outs.tc .oc {
+  display: none;
+}
+@media (max-width: 640px) {
+  .outs.tc .out-row {
+    grid-template-columns: 7.5em minmax(0, 1fr) auto;
+  }
+}
+.bitgrid.tc .bit {
+  cursor: default;
+}
+.bitgrid.tc .bit.sign {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.posrow.tc .d {
+  width: 2.3em;
+}
+.posrow.tc .d.dim {
+  opacity: 0.45;
+}
+.d.flip {
+  animation-name: bl-flip;
+}
+@keyframes bl-flip {
+  from {
+    opacity: 0;
+    transform: rotateX(90deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* #endregion */
